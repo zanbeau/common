@@ -18,7 +18,7 @@
 include(FetchContent)
 FetchContent_Declare(common
     GIT_REPOSITORY https://github.com/zanbeau/common.git
-    GIT_TAG        v0.2.0   # 建议锁定版本
+    GIT_TAG        v0.3.0   # 建议锁定版本
 )
 FetchContent_MakeAvailable(common)
 
