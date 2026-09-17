@@ -1,30 +1,27 @@
-// widgets 示例:无边框窗口 + 标题栏关闭按钮(ClickedLabel)+ Toast
-#include <QApplication>
+#include "framelessdemowindow.h"
+
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
 
 #include "clickedlabel.h"
-#include "framelesswidget.h"
 #include "toastlabel.h"
 
-int main(int argc, char *argv[])
+FramelessDemoWindow::FramelessDemoWindow(QWidget *parent)
+    : FramelessWidget(parent)
 {
-    QApplication app(argc, argv);
-
-    FramelessWidget window;
-    window.setObjectName("window");
-    window.setStyleSheet(QStringLiteral(
+    setObjectName("window");
+    setStyleSheet(QStringLiteral(
         "#window{background:#f4f4f4;}"
         "#titleBar{background:#2d2d30;}"
         "#titleLabel{color:#ffffff;font-size:13px;}"
         "#closeLabel{color:#ffffff;font-size:14px;border-radius:4px;}"
         "#closeLabel:hover{background:#e81123;}"));
-    window.resize(560, 380);
-    window.setMinimumSize(360, 240);
+    resize(560, 380);
+    setMinimumSize(360, 240);
 
-    QVBoxLayout *layout = new QVBoxLayout(&window);
+    QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
@@ -34,13 +31,13 @@ int main(int argc, char *argv[])
     titleBar->setFixedHeight(36);
     QHBoxLayout *titleLayout = new QHBoxLayout(titleBar);
     titleLayout->setContentsMargins(12, 0, 12, 0);
-    QLabel *titleLabel = new QLabel(QStringLiteral("common 示例"));
+    QLabel *titleLabel = new QLabel(QStringLiteral("无边框窗口示例"));
     titleLabel->setObjectName("titleLabel");
     ClickedLabel *closeLabel = new ClickedLabel(QStringLiteral("✕"));
     closeLabel->setObjectName("closeLabel");
     closeLabel->setFixedSize(32, 24);
     closeLabel->setAlignment(Qt::AlignCenter);
-    QObject::connect(closeLabel, &ClickedLabel::clicked, &window, &QWidget::close);
+    connect(closeLabel, &ClickedLabel::clicked, this, &QWidget::close);
     titleLayout->addWidget(titleLabel);
     titleLayout->addStretch();
     titleLayout->addWidget(closeLabel);
@@ -54,8 +51,8 @@ int main(int argc, char *argv[])
     hintLabel->setAlignment(Qt::AlignCenter);
     hintLabel->setStyleSheet(QStringLiteral("color:#555555;font-size:13px;"));
     QPushButton *toastButton = new QPushButton(QStringLiteral("弹出 Toast"));
-    QObject::connect(toastButton, &QPushButton::clicked, &window, [&window]() {
-        ToastLabel::showText(QStringLiteral("这是一条 Toast 提示"), &window);
+    connect(toastButton, &QPushButton::clicked, this, [this]() {
+        ToastLabel::showText(QStringLiteral("这是一条 Toast 提示"), this);
     });
     bodyLayout->addWidget(hintLabel);
     bodyLayout->addStretch();
@@ -64,7 +61,4 @@ int main(int argc, char *argv[])
 
     layout->addWidget(titleBar);
     layout->addWidget(body, 1);
-
-    window.show();
-    return app.exec();
 }
