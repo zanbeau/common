@@ -1,15 +1,25 @@
 cmake_minimum_required(VERSION 3.21)
-project(common VERSION 0.1.0 LANGUAGES CXX)
+project(common VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-# 单独打开构建时自己找 Qt
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
 
+# 单独打开构建时自己找 Qt
 if(PROJECT_IS_TOP_LEVEL)
-    find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+    find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test)
 endif()
 
 add_subdirectory(core)
 add_subdirectory(widgets)
+
+# 示例与测试只在单独构建本库时编译
+if(PROJECT_IS_TOP_LEVEL)
+    enable_testing()
+    add_subdirectory(examples)
+    add_subdirectory(tests)
+endif()
