@@ -7,18 +7,23 @@
 
 INCLUDEPATH += $$PWD/core \
                $$PWD/core/base \
+               $$PWD/core/app \
                $$PWD/widgets/frameless \
                $$PWD/widgets/controls
 
-QT      += widgets
+QT      += widgets network
 CONFIG  += c++17
 
 HEADERS += $$PWD/core/base/singleton.h \
+           $$PWD/core/base/logger.h \
+           $$PWD/core/app/singleinstance.h \
            $$PWD/widgets/frameless/framelesswidget.h \
            $$PWD/widgets/controls/clickedlabel.h \
            $$PWD/widgets/controls/toastlabel.h
 
-SOURCES += $$PWD/widgets/frameless/framelesswidget.cpp \
+SOURCES += $$PWD/core/base/logger.cpp \
+           $$PWD/core/app/singleinstance.cpp \
+           $$PWD/widgets/frameless/framelesswidget.cpp \
            $$PWD/widgets/controls/clickedlabel.cpp \
            $$PWD/widgets/controls/toastlabel.cpp
 
