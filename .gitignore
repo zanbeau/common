@@ -2,6 +2,7 @@ build/
 build-*/
 .vs/
 .vscode/
+.cache/
 *.user
 
 CMakeLists.txt.user*

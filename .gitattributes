@@ -1,0 +1,12 @@
+# 文本文件仓库内统一 LF，检出时按平台/autocrlf 处理
+* text=auto
+
+# 脚本固定换行符，避免跨平台跑不起来
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# 二进制文件不做换行转换
+*.png binary
+*.jpg binary
+*.ico binary
+*.ttf binary
