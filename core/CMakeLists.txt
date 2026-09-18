@@ -1,6 +1,6 @@
 add_library(core STATIC
-    app/singleinstance.h
-    app/singleinstance.cpp
+    application/singleinstance.h
+    application/singleinstance.cpp
     base/logger.h
     base/logger.cpp
     base/singleton.h
@@ -10,5 +10,5 @@ target_link_libraries(core PUBLIC Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJ
 target_include_directories(core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/base
-    ${CMAKE_CURRENT_SOURCE_DIR}/app
+    ${CMAKE_CURRENT_SOURCE_DIR}/application
 )
