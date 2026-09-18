@@ -9,6 +9,10 @@ HEADERS += gallerywindow.h \
            pages/framelessdemowindow.h \
            pages/framelesspage.h \
            pages/clickedlabelpage.h \
+           pages/clickedsliderpage.h \
+           pages/marqueepage.h \
+           pages/waitspinnerpage.h \
+           pages/animationstackedpage.h \
            pages/toastpage.h
 
 SOURCES += main.cpp \
@@ -16,4 +20,8 @@ SOURCES += main.cpp \
            pages/framelessdemowindow.cpp \
            pages/framelesspage.cpp \
            pages/clickedlabelpage.cpp \
+           pages/clickedsliderpage.cpp \
+           pages/marqueepage.cpp \
+           pages/waitspinnerpage.cpp \
+           pages/animationstackedpage.cpp \
            pages/toastpage.cpp

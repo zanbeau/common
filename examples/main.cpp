@@ -5,9 +5,13 @@
 #include "singleinstance.h"
 
 #include "gallerywindow.h"
+#include "pages/animationstackedpage.h"
 #include "pages/clickedlabelpage.h"
+#include "pages/clickedsliderpage.h"
 #include "pages/framelesspage.h"
+#include "pages/marqueepage.h"
 #include "pages/toastpage.h"
+#include "pages/waitspinnerpage.h"
 
 int main(int argc, char *argv[])
 {
@@ -30,6 +34,10 @@ int main(int argc, char *argv[])
     GalleryWindow window;
     window.addPage(QStringLiteral("无边框窗口"), new FramelessPage);
     window.addPage(QStringLiteral("可点击标签"), new ClickedLabelPage);
+    window.addPage(QStringLiteral("滚动文本"), new MarqueePage);
+    window.addPage(QStringLiteral("点击跳转滑条"), new ClickedSliderPage);
+    window.addPage(QStringLiteral("等待转圈"), new WaitSpinnerPage);
+    window.addPage(QStringLiteral("页面切换动画"), new AnimationStackedPage);
     window.addPage(QStringLiteral("Toast 提示"), new ToastPage);
     QObject::connect(&guard, &SingleInstance::messageReceived, &window, [&window](const QString &message) {
         Log::info() << "收到副实例消息:" << message;
