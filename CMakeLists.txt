@@ -9,9 +9,13 @@ if(MSVC)
     add_compile_options(/utf-8)
 endif()
 
-# 单独打开构建时自己找 Qt
+# 禁用 Qt 5.15 之前已弃用的 API:保证同一份源码在 Qt 5.15 / Qt 6 下都干净编译
+add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
+
+# 单独打开构建时自己找 Qt(优先 Qt6,可通过 CMAKE_PREFIX_PATH 指到 5.15)
 if(PROJECT_IS_TOP_LEVEL)
-    find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets Test)
+    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Network Widgets Test)
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Widgets Test)
 endif()
 
 add_subdirectory(core)

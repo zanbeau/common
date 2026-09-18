@@ -1,6 +1,7 @@
 #include "clickedlabelpage.h"
 
 #include <QLabel>
+#include <QVariant>
 #include <QVBoxLayout>
 
 #include "clickedlabel.h"
