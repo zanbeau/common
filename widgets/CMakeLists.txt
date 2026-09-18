@@ -1,16 +1,17 @@
 add_library(widgets STATIC
-    controls/clickedlabel.h
-    controls/clickedlabel.cpp
-    controls/toastlabel.h
-    controls/toastlabel.cpp
-    frameless/framelesswidget.h
-    frameless/framelesswidget.cpp
+    label/clickedlabel.h
+    label/clickedlabel.cpp
+    label/toastlabel.h
+    label/toastlabel.cpp
+    window/framelesswidget.h
+    window/framelesswidget.cpp
 )
 add_library(canfan::widgets ALIAS widgets)
 target_link_libraries(widgets PUBLIC Qt${QT_VERSION_MAJOR}::Widgets canfan::core)
-# 同时暴露子目录,#include "framelesswidget.h" 与 #include "frameless/framelesswidget.h" 两种写法都可用
+# 目录名 = 控件类别(label/window/...),每个类别目录都暴露:
+# #include "clickedlabel.h" 与 #include "label/clickedlabel.h" 两种写法都可用
 target_include_directories(widgets PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/controls
-    ${CMAKE_CURRENT_SOURCE_DIR}/frameless
+    ${CMAKE_CURRENT_SOURCE_DIR}/label
+    ${CMAKE_CURRENT_SOURCE_DIR}/window
 )
