@@ -4,6 +4,7 @@
 #include <QProcess>
 #include <QTemporaryDir>
 
+#include "duration.h"
 #include "logger.h"
 #include "singleinstance.h"
 
@@ -11,9 +12,33 @@ class TstCore : public QObject
 {
     Q_OBJECT
 private slots:
+    void duration();
     void logger();
     void singleInstance();
 };
+
+void TstCore::duration()
+{
+    QCOMPARE(Duration::format(0), QStringLiteral("00:00"));
+    QCOMPARE(Duration::format(59'000), QStringLiteral("00:59"));
+    QCOMPARE(Duration::format(65'000), QStringLiteral("01:05"));
+    QCOMPARE(Duration::format(3'600'000), QStringLiteral("1:00:00"));
+    QCOMPARE(Duration::format(3'661'000), QStringLiteral("1:01:01"));
+    // 负数按 0 处理
+    QCOMPARE(Duration::format(-5'000), QStringLiteral("00:00"));
+
+    QCOMPARE(Duration::parse(QStringLiteral("12")), qint64(12'000));
+    QCOMPARE(Duration::parse(QStringLiteral("01:05")), qint64(65'000));
+    QCOMPARE(Duration::parse(QStringLiteral("1:01:01")), qint64(3'661'000));
+    // 非法输入返回 -1
+    QCOMPARE(Duration::parse(QStringLiteral("abc")), qint64(-1));
+    QCOMPARE(Duration::parse(QStringLiteral("-1:00")), qint64(-1));
+    QCOMPARE(Duration::parse(QStringLiteral("1:2:3:4")), qint64(-1));
+
+    // 往返一致
+    QCOMPARE(Duration::parse(Duration::format(3'661'000)), qint64(3'661'000));
+    QCOMPARE(Duration::parse(Duration::format(65'000)), qint64(65'000));
+}
 
 void TstCore::logger()
 {

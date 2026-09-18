@@ -8,6 +8,14 @@ add_executable(widgets_demo WIN32
     pages/framelesspage.cpp
     pages/clickedlabelpage.h
     pages/clickedlabelpage.cpp
+    pages/clickedsliderpage.h
+    pages/clickedsliderpage.cpp
+    pages/marqueepage.h
+    pages/marqueepage.cpp
+    pages/waitspinnerpage.h
+    pages/waitspinnerpage.cpp
+    pages/animationstackedpage.h
+    pages/animationstackedpage.cpp
     pages/toastpage.h
     pages/toastpage.cpp
 )
