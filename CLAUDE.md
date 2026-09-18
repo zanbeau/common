@@ -4,18 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Shared base library (`common`) for personal Qt projects. Two static libraries, layered strictly:
+Shared base library (`common`) for personal Qt projects. One source base supports **both Qt 5.15 and Qt 6** (C++17): CMake uses `find_package(QT NAMES Qt6 Qt5 ...)` + `Qt${QT_VERSION_MAJOR}::` targets, qmake relies on its built-in `QT_MAJOR_VERSION`, and `QT_DISABLE_DEPRECATED_BEFORE=0x050F00` is set in both so anything deprecated before 5.15 fails to compile on either version. The only in-source version branches: `globalMousePos()` in `framelesswidget.cpp` (`globalPosition()` vs `globalPos()`) and the High-DPI attributes set before `QApplication` in `examples/main.cpp` / `tests/tst_widgets.cpp` (Qt5-only, `#if QT_VERSION < 6`).
 
-- `core/` — Qt6::Core + Qt6::Network (QLocalServer/QLocalSocket), **no UI dependencies**
+Two static libraries, layered strictly:
+
+- `core/` — Qt::Core + Qt::Network (QLocalServer/QLocalSocket), **no UI dependencies**
   - `base/singleton.h` — CRTP singleton
   - `base/logger` — stream logger (`Log::info() << ...`); `Log::setFile()` installs a message handler mirroring ALL Qt messages to a file
   - `app/singleinstance` — composition-based single-instance guard (no QApplication subclass, unlike TTK's three-class approach). Secondary instances `sendMessage()` (newline-framed, blocks until the primary acks — the ack is required: without it a secondary exiting right after write can lose the message). Consumer apps must keep the primary's event loop responsive.
-- `widgets/` — Qt6::Widgets controls, depends on `canfan::core`
+- `widgets/` — Qt::Widgets controls, depends on `canfan::core`
   - `frameless/framelesswidget` — frameless window: client-area drag, 8-direction edge resize (5px default margin, `setResizeMargin()`), double-click maximize/restore. Prefers native `startSystemMove`/`startSystemResize` (Windows snap, Wayland), falls back to manual implementation when the platform doesn't take over.
   - `controls/clickedlabel` — clickable QLabel that swallows the press event (for frameless title bars)
   - `controls/toastlabel` — auto-fading toast; static `ToastLabel::showText(text, parent)`
 
-Each library is built under its plain name (`core`, `widgets`) but aliased as `canfan::core` / `canfan::widgets` — consumer projects link the `canfan::` aliases. When `common` is pulled in via `add_subdirectory()` from another project, the top-level `find_package(Qt6)` is skipped (`PROJECT_IS_TOP_LEVEL` guard), so Qt is resolved by the parent project; the parent must request at least `COMPONENTS Core Network Widgets` (core needs Network).
+Each library is built under its plain name (`core`, `widgets`) but aliased as `canfan::core` / `canfan::widgets` — consumer projects link the `canfan::` aliases. When `common` is pulled in via `add_subdirectory()` from another project, the top-level Qt lookup is skipped (`PROJECT_IS_TOP_LEVEL` guard), so Qt is resolved by the parent project's own `find_package` (which also defines `QT_VERSION_MAJOR` for this scope); the parent must request at least `COMPONENTS Core Network Widgets` (core needs Network).
 
 Include paths: `core/` and `widgets/` source roots are public, plus the `widgets/frameless/` and `widgets/controls/` subdirectories — so both `#include "framelesswidget.h"` and `#include "frameless/framelesswidget.h"` work (musicplayer relies on the short form). New headers must be added to the `add_library()` source lists explicitly (AUTOMOC is on).
 
@@ -41,9 +43,33 @@ cmake --build build
 ctest --test-dir build
 ```
 
+Qt 5.15.2 lives at `D:/Qt/5.15.2/msvc2019_64`; it builds with the same VS2022 toolchain (2019/2022 kits are ABI-compatible). Use a separate build dir, and put the Qt5 `bin` on PATH before `ctest` or the test exes fail with `0xc0000135` (missing Qt DLLs):
+
+```sh
+cmake -B build-qt5 -G Ninja -DCMAKE_PREFIX_PATH=D:/Qt/5.15.2/msvc2019_64
+cmake --build build-qt5
+ctest --test-dir build-qt5
+```
+
+Both configurations must stay green — build and test both before tagging a release. One toolchain pitfall: `build/` is pinned to the VS2022 cl on the D: drive; running its build under the VS18 vcvars env mixes a newer STL with the older cached compiler (STL1001). Always enter the environment matching the compiler a build dir was configured with.
+
 `build-test/` is configured with the Visual Studio 17 2022 generator (open `build-test/common.sln`, or `cmake --build build-test`). Tests live in `tests/` (`tst_core`, `tst_widgets`, run on the offscreen QPA platform). Note: QTest console output is invisible when stdout is redirected from git-bash/cmd on this machine — run a test with `-o <file>,txt` to see results. Tests and examples only build when `common` is the top-level project. No lint/format tooling is configured. clangd is used (`.cache/clangd`; `compile_commands.json` lives in `build/`).
 
 `examples/` is a TTKExample-style widget gallery: `GalleryWindow` (left category list + right `QStackedWidget`) with `addPage(name, page)`; one demo page class per widget under `examples/pages/`. To showcase a new widget: create `examples/pages/<widget>page.{h,cpp}`, register it in `examples/CMakeLists.txt` + `examples/widgets_demo.pro` (HEADERS/SOURCES), and add one `addPage(...)` line in `examples/main.cpp`.
+
+## Adding a component
+
+A component counts as complete only when all seven places are updated:
+
+1. Source in the right layer — `core/` must stay UI-free; controls go to `widgets/`
+2. The layer's `add_library()` list in CMake (headers included explicitly; AUTOMOC)
+3. `common.pri` HEADERS/SOURCES
+4. A test case in `tests/tst_core.cpp` / `tst_widgets.cpp`
+5. A gallery demo page: `examples/pages/<name>page.{h,cpp}` + registration in `examples/CMakeLists.txt`, `examples/widgets_demo.pro`, and one `addPage(...)` line in `examples/main.cpp`
+6. A row in README's module table (plus a usage snippet when the API is non-obvious)
+7. Version bump in the root CMakeLists + git tag, per Versioning below
+
+`common` grows on demand — add a component when a consumer project actually needs it; do not mirror TTKCommon's full catalog.
 
 ## Versioning
 

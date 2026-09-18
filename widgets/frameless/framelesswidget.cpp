@@ -28,6 +28,16 @@ Qt::CursorShape cursorShape(Qt::Edges edges)
     return Qt::ArrowCursor;
 }
 
+// Qt6 起才有 globalPosition();Qt5 用 globalPos()(Qt6 中仍在,仅弃用)
+QPoint globalMousePos(const QMouseEvent *event)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    return event->globalPosition().toPoint();
+#else
+    return event->globalPos();
+#endif
+}
+
 }
 
 FramelessWidget::FramelessWidget(QWidget *parent)
@@ -79,7 +89,7 @@ void FramelessWidget::mousePressEvent(QMouseEvent *event)
     if(event->button() == Qt::LeftButton && !isMaximized())
     {
         m_resizeEdges = edgeAt(event->pos());
-        m_pressPos = event->globalPosition().toPoint();
+        m_pressPos = globalMousePos(event);
         m_pressGeometry = geometry();
 
         QWindow *handle = windowHandle();
@@ -99,7 +109,7 @@ void FramelessWidget::mouseMoveEvent(QMouseEvent *event)
 {
     if(m_pressed && event->buttons() & Qt::LeftButton)
     {
-        const QPoint delta = event->globalPosition().toPoint() - m_pressPos;
+        const QPoint delta = globalMousePos(event) - m_pressPos;
         if(m_resizeEdges)
         {
             const int minW = qMax(minimumWidth(), 1);

@@ -14,6 +14,9 @@ INCLUDEPATH += $$PWD/core \
 QT      += widgets network
 CONFIG  += c++17
 
+# 禁用 Qt 5.15 之前已弃用的 API,与 CMake 侧 QT_DISABLE_DEPRECATED_BEFORE 保持一致
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00
+
 HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/core/base/logger.h \
            $$PWD/core/app/singleinstance.h \

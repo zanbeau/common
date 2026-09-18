@@ -139,5 +139,16 @@ void TstWidgets::framelessDoubleClick()
     QTRY_VERIFY(!w.isMaximized());
 }
 
-QTEST_MAIN(TstWidgets)
+// 等价 QTEST_MAIN,但需在 QApplication 构造前为 Qt5 开启 High-DPI
+int main(int argc, char *argv[])
+{
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+#endif
+
+    QApplication app(argc, argv);
+    TstWidgets tc;
+    return QTest::qExec(&tc, argc, argv);
+}
 #include "tst_widgets.moc"
