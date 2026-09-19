@@ -138,6 +138,14 @@ void TstWidgets::clickedSlider()
     QTest::mouseClick(&slider, Qt::RightButton, {}, QPoint(20, 15));
     QCOMPARE(spy.count(), clicks);
     QCOMPARE(slider.value(), before);
+
+    // 空量程时按下必须被接收:QSlider 默认 ignore 会冒泡到
+    // 无边框父窗口,被当成"空白区按下"而拖动整个窗口
+    ClickedSlider empty(Qt::Horizontal);
+    QMouseEvent emptyPress(QEvent::MouseButtonPress, QPointF(10, 5), QPointF(10, 5),
+                           Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&empty, &emptyPress);
+    QVERIFY(emptyPress.isAccepted());
 }
 
 void TstWidgets::marqueeLabel()
@@ -304,6 +312,34 @@ void TstWidgets::framelessResize()
 
     QCOMPARE(w.width(), 440);
     QCOMPARE(w.height(), 340);
+
+    // 设置了最大尺寸后,手动拉伸不能超过上限
+    FramelessWidget capped;
+    capped.setMaximumWidth(450);
+    capped.setMaximumHeight(350);
+    capped.resize(400, 300);
+    capped.show();
+    QTRY_VERIFY(capped.isVisible());
+
+    const QPoint local2(1, 1);
+    const QPoint global2 = capped.mapToGlobal(local2);
+
+    QMouseEvent press2(QEvent::MouseButtonPress, QPointF(local2), QPointF(global2),
+                       Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&capped, &press2);
+
+    const QPoint dragged2 = global2 + QPoint(-80, -80);
+    QMouseEvent move2(QEvent::MouseMove, QPointF(local2 + QPoint(-80, -80)), QPointF(dragged2),
+                      Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&capped, &move2);
+
+    QMouseEvent release2(QEvent::MouseButtonRelease, QPointF(local2 + QPoint(-80, -80)), QPointF(dragged2),
+                         Qt::LeftButton, Qt::NoButton, {});
+    QApplication::sendEvent(&capped, &release2);
+
+    // 想拉到 480x380,被钳到 450x350
+    QCOMPARE(capped.width(), 450);
+    QCOMPARE(capped.height(), 350);
 }
 
 void TstWidgets::framelessDoubleClick()
@@ -638,6 +674,24 @@ void TstWidgets::titleBar()
     QCOMPARE(spy.count(), 1);
     QTRY_VERIFY(!window.isVisible());
     QVERIFY(!bar.grab().isNull()); // 关闭后仍可离屏自绘
+
+    // 标题栏空白处按下拖动 → 窗口移动(watch 面板路径,不冒泡)
+    window.show();
+    QTRY_VERIFY(window.isVisible());
+    const QPoint oldPos = window.pos();
+    const QPoint barLocal(100, 15);
+    QMouseEvent barPress(QEvent::MouseButtonPress, QPointF(barLocal),
+                         QPointF(bar.mapToGlobal(barLocal)),
+                         Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&bar, &barPress);
+    const QPoint barMoved = bar.mapToGlobal(barLocal) + QPoint(40, 20);
+    QMouseEvent barMove(QEvent::MouseMove, QPointF(barLocal + QPoint(40, 20)),
+                        QPointF(barMoved), Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&bar, &barMove);
+    QMouseEvent barRelease(QEvent::MouseButtonRelease, QPointF(barLocal + QPoint(40, 20)),
+                           QPointF(barMoved), Qt::LeftButton, Qt::NoButton, {});
+    QApplication::sendEvent(&bar, &barRelease);
+    QCOMPARE(window.pos(), oldPos + QPoint(40, 20));
 }
 
 void TstWidgets::messageBox()

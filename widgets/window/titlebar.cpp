@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 
+#include "framelesshandler.h"
 #include "theme.h"
 
 namespace {
@@ -130,13 +131,15 @@ TitleBar::TitleBar(QWidget *window, const QString &title)
     : QWidget(window)
     , m_window(window)
 {
-    // 标题栏本体与标题文字对鼠标透明:按下/双击穿透到窗口本体,
-    // 由 FramelessHandler 处理拖动与双击最大化(按钮不受影响)
-    setAttribute(Qt::WA_TransparentForMouseEvents);
+    // 标题栏纳入窗口拖动体系:面板上的按下/移动/双击按窗口坐标处理
+    // (拖动、边缘拉伸、双击最大化),事件被截断不再冒泡到窗口;
+    // 按钮是独立子控件,自己消费点击,不经过这里
+    auto *drag = new FramelessHandler(m_window, this, false);
+    drag->watch(this);
+
     setFixedHeight(kBarHeight);
 
     m_title = new QLabel(title, this);
-    m_title->setAttribute(Qt::WA_TransparentForMouseEvents);
     QFont titleFont = m_title->font();
     titleFont.setPixelSize(Theme::instance()->fontPx(Tokens::FontSize::BodyStrong));
     m_title->setFont(titleFont);

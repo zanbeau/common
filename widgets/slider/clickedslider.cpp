@@ -16,6 +16,13 @@ ClickedSlider::ClickedSlider(QWidget *parent)
 
 void ClickedSlider::mousePressEvent(QMouseEvent *event)
 {
+    // 空量程时显式接收按下:QSlider 对空量程会 ignore,事件冒泡到
+    // 无边框父窗口会被当成"空白区按下"而拖动窗口
+    if(event->button() == Qt::LeftButton && maximum() == minimum())
+    {
+        event->accept();
+        return;
+    }
     if(event->button() == Qt::LeftButton && maximum() > minimum())
     {
         QStyleOptionSlider opt;
