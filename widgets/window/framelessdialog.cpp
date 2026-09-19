@@ -1,20 +1,20 @@
-#include "framelesswidget.h"
+#include "framelessdialog.h"
 
 #include "framelesshandler.h"
 
-FramelessWidget::FramelessWidget(QWidget *parent)
-    : QWidget(parent)
+FramelessDialog::FramelessDialog(QWidget *parent)
+    : QDialog(parent)
 {
     setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
     m_handler = new FramelessHandler(this, this);
 }
 
-void FramelessWidget::setResizeMargin(int margin)
+void FramelessDialog::setResizeMargin(int margin)
 {
     m_handler->setResizeMargin(margin);
 }
 
-int FramelessWidget::resizeMargin() const
+int FramelessDialog::resizeMargin() const
 {
     return m_handler->resizeMargin();
 }

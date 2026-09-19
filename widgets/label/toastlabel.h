@@ -7,6 +7,7 @@ class QPropertyAnimation;
 class QTimer;
 
 // 气泡提示:popup() 后居中于父窗口显示,停留片刻后淡出
+// 反色表面配色(深底浅字)取自 Theme,亮暗主题自动联动
 // 便捷用法:ToastLabel::showText("提示内容", this);
 class ToastLabel : public QLabel
 {
@@ -22,6 +23,7 @@ public:
                          int duration = 1600, int fadeDuration = 350);
 
 private:
+    void applyThemeStyle();
     void startFade();
 
     QGraphicsOpacityEffect *m_effect = nullptr;
