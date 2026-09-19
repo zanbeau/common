@@ -33,12 +33,14 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
+      # Windows 默认生成器是 Visual Studio(多配置),必须显式指定配置;
+      # 单配置生成器(Linux/Ninja)会忽略 --config/-C,两侧统一写法
       - name: Build
-        run: cmake --build build
+        run: cmake --build build --config Debug
 
       # Linux 无显示环境,QPA 强制 offscreen(测试侧已设,这里兜底);
       # Windows runner 有桌面会话,按默认平台跑
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build -C Debug --output-on-failure
         env:
           QT_QPA_PLATFORM: ${{ runner.os == 'Linux' && 'offscreen' || 'native' }}
