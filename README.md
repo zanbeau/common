@@ -41,7 +41,7 @@ core 依赖 Qt::Core + Qt::Network(QLocalServer/QLocalSocket),使用方 `find_pa
 include(FetchContent)
 FetchContent_Declare(common
     GIT_REPOSITORY https://github.com/zanbeau/common.git
-    GIT_TAG        v0.8.0   # 建议锁定版本
+    GIT_TAG        v0.9.0   # 建议锁定版本
 )
 FetchContent_MakeAvailable(common)
 

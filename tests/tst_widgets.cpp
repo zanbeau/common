@@ -444,6 +444,12 @@ void TstWidgets::pushButton()
     PushButton button(QStringLiteral("确定"), PushButton::Type::Primary);
     QCOMPARE(button.type(), PushButton::Type::Primary);
 
+    // QPushButton 惯用形态 (text, parent) 的便捷构造
+    QWidget host;
+    PushButton convenience(QStringLiteral("便捷"), &host);
+    QCOMPARE(convenience.type(), PushButton::Type::Default);
+    QCOMPARE(convenience.parentWidget(), &host);
+
     QSignalSpy spy(&button, &PushButton::clicked);
     button.setType(PushButton::Type::Danger);
     QCOMPARE(button.type(), PushButton::Type::Danger);
