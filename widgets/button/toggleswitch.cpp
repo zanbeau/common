@@ -1,5 +1,6 @@
 #include "toggleswitch.h"
 
+#include <QFocusEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
@@ -101,8 +102,9 @@ void ToggleSwitch::paintEvent(QPaintEvent *event)
     painter.drawEllipse(QPointF(knobX, knobY), kKnobDiameter / 2.0, kKnobDiameter / 2.0);
 
     // 焦点圈:与轨道同形的药丸点线,画在轨道外留白里;
+    // 仅在键盘导航(Tab)获得焦点时显示,鼠标点击带来的焦点不画;
     // 若与轨道同矩形,点线会从更圆的轨道圆角外露出直角(蓝色叠蓝色只剩角可见)
-    if(hasFocus())
+    if(hasFocus() && m_keyboardFocus)
     {
         QPen focusPen(theme->color(Theme::Role::Primary));
         focusPen.setStyle(Qt::DotLine);
@@ -158,4 +160,29 @@ void ToggleSwitch::keyPressEvent(QKeyEvent *event)
         QWidget::keyPressEvent(event);
         break;
     }
+}
+
+void ToggleSwitch::focusInEvent(QFocusEvent *event)
+{
+    switch(event->reason())
+    {
+    case Qt::TabFocusReason:
+    case Qt::BacktabFocusReason:
+        m_keyboardFocus = true;
+        break;
+    case Qt::MouseFocusReason:
+    case Qt::OtherFocusReason:
+        m_keyboardFocus = false;
+        break;
+    default:
+        // 窗口激活等其他原因保持原状,不打断键盘导航的显示
+        break;
+    }
+    update();  // 焦点变化不会自动触发重绘
+}
+
+void ToggleSwitch::focusOutEvent(QFocusEvent *event)
+{
+    Q_UNUSED(event)
+    update();  // 让焦点圈随焦点离开而消失
 }
