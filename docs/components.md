@@ -172,7 +172,9 @@ connect(flow, &CoverFlow::currentChanged, this, &Browser::onCoverChanged);
 
 ### `FramelessWidget` — 无边框窗口基类
 
-客户区拖动、八方向边缘拉伸(`setResizeMargin()`,默认 5px)、双击最大化/还原。优先走窗口系统 `startSystemMove`/`startSystemResize`(原生贴边、Wayland 兼容),不支持时回退手动实现。
+八方向边缘拉伸(`setResizeMargin()`,默认 5px)对全窗口生效;**拖动与双击最大化只发生在标题栏(watch 面板)上**——内容区(控制栏、列表空白处等)的按下不认领也不拖动窗口。优先走窗口系统 `startSystemMove`/`startSystemResize`(原生贴边、Wayland 兼容),不支持时回退手动实现。
+
+窗口要能拖动,摆放 `TitleBar`(或对自拼面板调用 `FramelessHandler::watch()`)即可。
 
 ### `FramelessDialog` — 无边框对话框基类
 
@@ -180,12 +182,13 @@ connect(flow, &CoverFlow::currentChanged, this, &Browser::onCoverChanged);
 
 ### `FramelessHandler` — 无边框行为复用
 
-上述两个类的行为本体(事件过滤器)。任何顶层窗口都能挂:
+上述两个类的行为本体(事件过滤器)。窗口本体只处理边缘拉伸;`watch(panel)` 把面板(标题栏)纳入拖动/双击最大化体系。任何顶层窗口都能挂:
 
 ```cpp
-// 让任意 QWidget 窗口获得拖动/拉伸/双击最大化
+// 让任意 QWidget 窗口获得 边缘拉伸 + 面板拖动
 setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
-new FramelessHandler(this, this);
+auto *handler = new FramelessHandler(this, this);
+handler->watch(titleBar);   // 自拼面板;用 TitleBar 则它自己会挂
 ```
 
 ### `TitleBar` — 标题栏

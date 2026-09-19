@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 
 #include "clickedlabel.h"
+#include "framelesshandler.h"
 #include "toastlabel.h"
 
 FramelessDemoWindow::FramelessDemoWindow(QWidget *parent)
@@ -61,4 +62,9 @@ FramelessDemoWindow::FramelessDemoWindow(QWidget *parent)
 
     layout->addWidget(titleBar);
     layout->addWidget(body, 1);
+
+    // 自拼标题栏要自己挂进拖动体系(watch):拖动/双击最大化只认 watch 面板,
+    // 窗口本体只保留边缘拉伸——内容区(含下方空白)按下不拖动窗口
+    auto *drag = new FramelessHandler(this, this, false);
+    drag->watch(titleBar);
 }

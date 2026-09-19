@@ -11,9 +11,9 @@ class QMouseEvent;
 class QWidget;
 
 // 无边框窗口行为,以事件过滤器附加到任意顶层窗口:
-//  - 按住客户区可拖动窗口
-//  - 靠近窗口边缘时按住可拉伸(八个方向)
-//  - 双击客户区最大化/还原
+//  - 靠近窗口边缘时按住可拉伸(八个方向,任何位置)
+//  - 拖动窗口 / 双击最大化只发生在 watch() 进来的面板上(标题栏):
+//    内容区的按下不认领、冒泡到窗口后不产生任何拖动——内容就是内容
 // 拖动/拉伸优先交给窗口系统处理(原生贴边手感、Wayland 兼容),
 // 窗口系统不支持时回退为手动实现。FramelessWidget / FramelessDialog 共用。
 // watch(panel) 把标题栏这类"覆盖在窗口上、自身还要响应点击"的面板
@@ -40,7 +40,8 @@ private:
     Qt::Edges edgeAt(const QPoint &pos) const;
 
     // localPos 已换算到窗口坐标系;globalPos 为全局位置
-    void handlePress(const QPoint &localPos, const QPoint &globalPos);
+    // allowMove:是否允许整窗移动(仅 watch 面板为 true;窗口本体只认边缘拉伸)
+    void handlePress(const QPoint &localPos, const QPoint &globalPos, bool allowMove);
     bool handleMove(const QPoint &localPos, const QPoint &globalPos,
                     Qt::MouseButtons buttons); // 返回是否已消费(拖动/拉伸中)
     void handleRelease();

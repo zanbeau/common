@@ -120,7 +120,8 @@ bool FramelessHandler::eventFilter(QObject *watched, QEvent *event)
         {
             const QPoint local = isTarget ? mouse->pos()
                                           : panel->mapTo(m_target, mouse->pos());
-            handlePress(local, globalMousePos(mouse));
+            // 整窗移动只认 watch 面板(标题栏);窗口本体只处理边缘拉伸
+            handlePress(local, globalMousePos(mouse), isPanel);
         }
         break;
     }
@@ -147,12 +148,10 @@ bool FramelessHandler::eventFilter(QObject *watched, QEvent *event)
     case QEvent::MouseButtonDblClick:
     {
         auto *mouse = static_cast<QMouseEvent *>(event);
-        if(mouse->button() == Qt::LeftButton)
+        // 双击最大化同样只认 watch 面板;内容区双击是内容自己的事
+        if(isPanel && mouse->button() == Qt::LeftButton)
         {
             handleDoubleClick();
-        }
-        if(isPanel)
-        {
             return true;
         }
         break;
@@ -163,11 +162,19 @@ bool FramelessHandler::eventFilter(QObject *watched, QEvent *event)
     return QObject::eventFilter(watched, event);
 }
 
-void FramelessHandler::handlePress(const QPoint &localPos, const QPoint &globalPos)
+void FramelessHandler::handlePress(const QPoint &localPos, const QPoint &globalPos,
+                                    bool allowMove)
 {
     if(!m_target->isMaximized())
     {
         m_resizeEdges = edgeAt(localPos);
+
+        // 窗口本体上的按下:只有命中边缘才参与(拉伸);内容区不拖动
+        if(!m_resizeEdges && !allowMove)
+        {
+            return;
+        }
+
         m_pressPos = globalPos;
         m_pressGeometry = m_target->geometry();
 
