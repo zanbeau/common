@@ -42,7 +42,7 @@ Each library is built under its plain name (`core`, `widgets`) but aliased as `c
 
 Include paths: `core/` and `widgets/` source roots are public, plus every category subdirectory (`core/base`, `core/application`, `widgets/{theme,button,input,label,progress,slider,widget,window}`) — so both `#include "clickedlabel.h"` and `#include "label/clickedlabel.h"` work (musicplayer relies on the short form). When adding a new category dir, expose it in `widgets/CMakeLists.txt` (`target_include_directories`) AND `common.pri` (`INCLUDEPATH`). New headers must be added to the `add_library()` source lists explicitly (AUTOMOC is on).
 
-qmake is supported alongside CMake: `common.pri` is the consumer entry point (compiles sources into the including project, TTKCommon-style), `common.pro` builds a static lib standalone, `examples/widgets_demo.pro` builds the gallery demo. When adding a file, update `common.pri` (HEADERS/SOURCES) as well as the CMake lists. Build qmake targets from a VS x64 prompt (`vcvars64.bat`) since nmake/cl need the MSVC env:
+qmake is supported alongside CMake (deliberate keep decision, 2026-09-19 — do not propose dropping it): `common.pri` is the consumer entry point (compiles sources into the including project, TTKCommon-style), `common.pro` builds a static lib standalone, `examples/widgets_demo.pro` builds the gallery demo. When adding a file, update `common.pri` (HEADERS/SOURCES) as well as the CMake lists. Build qmake targets from a VS x64 prompt (`vcvars64.bat`) since nmake/cl need the MSVC env:
 
 ```sh
 mkdir build-qmake/lib && cd build-qmake/lib && qmake ../../common.pro && nmake
