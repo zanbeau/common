@@ -55,7 +55,6 @@ void SingleInstance::onNewConnection()
 {
     while(QLocalSocket *client = m_server.nextPendingConnection())
     {
-        qWarning("SingleInstance: client connected");
         connect(client, &QLocalSocket::readyRead, this, &SingleInstance::onReadyRead);
         connect(client, &QLocalSocket::disconnected, this, [this, client]() {
             processMessage(client, true);
@@ -82,7 +81,7 @@ void SingleInstance::processMessage(QLocalSocket *socket, bool closing)
     while((index = buffer.indexOf('\n', start)) >= 0)
     {
         const QString message = QString::fromUtf8(buffer.mid(start, index - start));
-        qWarning("SingleInstance: message received '%s'", qUtf8Printable(message));
+        qInfo("SingleInstance: message received '%s'", qUtf8Printable(message));
         emit messageReceived(message);
         socket->write("ack\n"); // 告知副实例:消息已处理
         socket->flush();
@@ -94,7 +93,7 @@ void SingleInstance::processMessage(QLocalSocket *socket, bool closing)
     {
         // 没有结尾换行的最后一段
         const QString message = QString::fromUtf8(buffer);
-        qWarning("SingleInstance: message received '%s'", qUtf8Printable(message));
+        qInfo("SingleInstance: message received '%s'", qUtf8Printable(message));
         emit messageReceived(message);
         socket->write("ack\n");
         socket->flush();

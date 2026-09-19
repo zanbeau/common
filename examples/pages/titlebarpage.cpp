@@ -13,8 +13,8 @@ TitleBarPage::TitleBarPage(QWidget *parent)
 {
     QLabel *intro = new QLabel(QStringLiteral(
         "TitleBar:无边框窗口的标题栏(标题 + 最小化/最大化/关闭),主题化绘制。\n"
-        "标题栏本体对鼠标透明——按下即拖动窗口、双击即最大化(走 FramelessHandler),\n"
-        "只有右上角三个按钮自己响应点击。"));
+        "标题栏通过 FramelessHandler::watch() 纳入拖动/边缘拉伸/双击最大化体系,\n"
+        "右上角三个按钮自己响应点击、不受拖动影响。"));
     intro->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
     PushButton *open = new PushButton(QStringLiteral("打开带标题栏的窗口"), PushButton::Type::Primary);
@@ -36,7 +36,9 @@ TitleBarPage::TitleBarPage(QWidget *parent)
         layout->addWidget(hint, 1);
 
         QPushButton *close = new QPushButton(QStringLiteral("关闭"));
-        QObject::connect(close, &QPushButton::clicked, window, &QWidget::close);
+        // 经局部实例调用:无捕获 lambda 里直接写 QObject::connect 会触发
+        // Qt5.15 + MSVC 的 C4573(this 捕获误判)
+        window->connect(close, &QPushButton::clicked, window, [window]() { window->close(); });
         layout->addWidget(close, 0, Qt::AlignHCenter);
 
         window->resize(420, 260);
