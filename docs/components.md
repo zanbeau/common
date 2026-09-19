@@ -149,6 +149,25 @@ slider->setFormatter([](int ms) { return formatLyricTime(ms); });  // 可选
 
 页面横向/纵向滑动切换动画的 QStackedWidget;`setCurrentIndexAnimated(i)`,动画期间的新请求被忽略。
 
+### `SideNav` — 侧边导航
+
+Ant Menu 风格的垂直导航(选中项淡主色底 + 左侧指示条,悬浮/亮暗自动联动),点击或上下键切换。与 QStackedWidget 配对即得"左导航 + 右内容"布局:
+
+```cpp
+auto *nav = new SideNav;
+nav->addItem(QStringLiteral("发现音乐"));
+connect(nav, &SideNav::currentChanged, stack, &QStackedWidget::setCurrentIndex);
+```
+
+### `CoverFlow` — 封面流
+
+中间大、两侧渐小渐淡、带倒影的封面浏览;滚轮 / 左右键切换,按住拖动翻页,松手滑动吸附:
+
+```cpp
+flow->setCovers(covers);
+connect(flow, &CoverFlow::currentChanged, this, &Browser::onCoverChanged);
+```
+
 ## widgets/window
 
 ### `FramelessWidget` — 无边框窗口基类

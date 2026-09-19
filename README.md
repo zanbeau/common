@@ -22,7 +22,7 @@
 | widgets | label | `ClickedLabel` / `MarqueeLabel` / `ToastLabel` / `TransitionLabel` / `RotateLabel` |
 | widgets | slider | `ClickedSlider` / `TipSlider` |
 | widgets | progress | `WaitSpinner` |
-| widgets | widget | `AnimationStackedWidget` |
+| widgets | widget | `AnimationStackedWidget` / `SideNav` / `CoverFlow` |
 | widgets | window | `FramelessWidget` / `FramelessDialog` / `FramelessHandler` / `TitleBar` / `MessageBox` / `NotifyWindow` / `SplashScreen` |
 
 主题三行起步:
@@ -41,7 +41,7 @@ core 依赖 Qt::Core + Qt::Network(QLocalServer/QLocalSocket),使用方 `find_pa
 include(FetchContent)
 FetchContent_Declare(common
     GIT_REPOSITORY https://github.com/zanbeau/common.git
-    GIT_TAG        v0.7.0   # 建议锁定版本
+    GIT_TAG        v0.8.0   # 建议锁定版本
 )
 FetchContent_MakeAvailable(common)
 

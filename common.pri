@@ -42,6 +42,8 @@ HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/widgets/theme/tokens.h \
            $$PWD/widgets/theme/theme.h \
            $$PWD/widgets/widget/animationstackedwidget.h \
+           $$PWD/widgets/widget/sidenav.h \
+           $$PWD/widgets/widget/coverflow.h \
            $$PWD/widgets/window/framelesswidget.h \
            $$PWD/widgets/window/framelesshandler.h \
            $$PWD/widgets/window/framelessdialog.h \
@@ -65,6 +67,8 @@ SOURCES += $$PWD/core/base/logger.cpp \
            $$PWD/widgets/slider/tipslider.cpp \
            $$PWD/widgets/theme/theme.cpp \
            $$PWD/widgets/widget/animationstackedwidget.cpp \
+           $$PWD/widgets/widget/sidenav.cpp \
+           $$PWD/widgets/widget/coverflow.cpp \
            $$PWD/widgets/window/framelesswidget.cpp \
            $$PWD/widgets/window/framelesshandler.cpp \
            $$PWD/widgets/window/framelessdialog.cpp \

@@ -25,6 +25,8 @@
 #include "pages/messageboxpage.h"
 #include "pages/notifywindowpage.h"
 #include "pages/splashscreenpage.h"
+#include "pages/sidenavpage.h"
+#include "pages/coverflowpage.h"
 
 int main(int argc, char *argv[])
 {
@@ -66,6 +68,8 @@ int main(int argc, char *argv[])
     window.addPage(QStringLiteral("点击跳转滑条"), new ClickedSliderPage);
     window.addPage(QStringLiteral("等待转圈"), new WaitSpinnerPage);
     window.addPage(QStringLiteral("页面切换动画"), new AnimationStackedPage);
+    window.addPage(QStringLiteral("侧边导航"), new SideNavPage);
+    window.addPage(QStringLiteral("封面流"), new CoverFlowPage);
     window.addPage(QStringLiteral("Toast 提示"), new ToastPage);
     QObject::connect(&guard, &SingleInstance::messageReceived, &window, [&window](const QString &message) {
         Log::info() << "收到副实例消息:" << message;

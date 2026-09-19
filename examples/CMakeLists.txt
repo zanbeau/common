@@ -22,6 +22,10 @@ add_executable(widgets_demo WIN32
     pages/waitspinnerpage.cpp
     pages/animationstackedpage.h
     pages/animationstackedpage.cpp
+    pages/sidenavpage.h
+    pages/sidenavpage.cpp
+    pages/coverflowpage.h
+    pages/coverflowpage.cpp
     pages/toastpage.h
     pages/toastpage.cpp
     pages/themepage.h

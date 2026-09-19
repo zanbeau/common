@@ -16,6 +16,8 @@ HEADERS += gallerywindow.h \
            pages/marqueepage.h \
            pages/waitspinnerpage.h \
            pages/animationstackedpage.h \
+           pages/sidenavpage.h \
+           pages/coverflowpage.h \
            pages/toastpage.h \
            pages/themepage.h \
            pages/pushbuttonpage.h \
@@ -39,6 +41,8 @@ SOURCES += main.cpp \
            pages/marqueepage.cpp \
            pages/waitspinnerpage.cpp \
            pages/animationstackedpage.cpp \
+           pages/sidenavpage.cpp \
+           pages/coverflowpage.cpp \
            pages/toastpage.cpp \
            pages/themepage.cpp \
            pages/pushbuttonpage.cpp \
