@@ -1,43 +1,39 @@
 # common
 
-个人 Qt 项目的公共基础库:core(无 UI 依赖)/ widgets(通用控件)。
-一套源码同时支持 **Qt 5.15 与 Qt 6**(C++17)。
-控件设计参考了 [TTKCommon](https://github.com/Greedysky/TTKWidgetTools)(LGPLv3)的思路,均为自行实现。
+个人 Qt 项目的组件库与公共基础库:core(无 UI 依赖)/ widgets(主题化控件)。
+一套源码同时支持 **Qt 5.15 与 Qt 6**(C++17),自带亮/暗双主题的设计令牌体系。
+控件设计参考了 [TTKCommon](https://github.com/Greedysky/TTKWidgetTools)(LGPLv3)、
+[Arco Design](https://arco.design) 色板与 Fluent 的桌面惯例,均为自行实现。
 
-目录名即类别:core 下是 `base/`(基础件)、`application/`(应用级设施);widgets 下每个子目录是一类控件(`label/`、`slider/`、`progress/`、`widget/`、`window/`),新控件按类别进目录。
+## 文档
 
-## 模块
+- **[docs/components.md](docs/components.md)** — 全组件参考(用法示例)
+- **[docs/theming.md](docs/theming.md)** — 主题与设计令牌指南
 
-| 模块 | 内容 |
-|---|---|
-| core/base | `singleton.h` — CRTP 单例基类 |
-| core/base | `logger` — 流式日志 `Log::info() << "loaded" << n;`,`Log::setFile(path)` 后所有日志(含 Qt 自身的 qDebug 等)镜像写入文件 |
-| core/base | `duration.h` — 播放时长格式化:`Duration::format(ms)` → `mm:ss` / `h:mm:ss`,`Duration::parse()` 反向 |
-| core/application | `SingleInstance` — 单实例守护(防双开):组合式设计不绑定应用类;副实例 `sendMessage()` 通知主实例并等待确认后退出 |
-| widgets/window | `FramelessWidget` — 无边框窗口基类:客户区拖动、八方向边缘拉伸、双击最大化/还原;优先走窗口系统 `startSystemMove`/`startSystemResize`(原生贴边、Wayland 兼容),不支持时回退手动实现 |
-| widgets/label | `ClickedLabel` — 可点击 QLabel,拦截按下事件不向上传播,适合放在无边框标题栏 |
-| widgets/label | `MarqueeLabel` — 文字超宽时自动横向滚动(hover 暂停、方向可设),不超宽即普通 QLabel |
-| widgets/label | `ToastLabel` — 自动淡出的气泡提示,一行调用 `ToastLabel::showText("提示", this)` |
-| widgets/slider | `ClickedSlider` — 点击轨道任意位置手柄直接跳过去,按住可继续拖动;音量条/进度条用 |
-| widgets/progress | `WaitSpinner` — 不定进度的转圈指示,周期/颜色/线宽可调 |
-| widgets/widget | `AnimationStackedWidget` — 页面横向/纵向滑动切换动画的 QStackedWidget |
+## 模块概览
 
-core 依赖 Qt::Core + Qt::Network(QLocalServer/QLocalSocket),使用方 `find_package(...)` 需包含 `Network` 组件;qmake 接入无需额外处理(common.pri 已加 `QT += network`)。
+| 层 | 类别 | 组件 |
+|---|---|---|
+| core | base | `singleton` / `logger` / `duration` |
+| core | application | `SingleInstance`(防双开) |
+| widgets | theme | `Tokens` / `Theme`(设计令牌 + 主题引擎) |
+| widgets | button | `PushButton` / `ToggleSwitch` |
+| widgets | input | `SearchInput` |
+| widgets | label | `ClickedLabel` / `MarqueeLabel` / `ToastLabel` / `TransitionLabel` / `RotateLabel` |
+| widgets | slider | `ClickedSlider` / `TipSlider` |
+| widgets | progress | `WaitSpinner` |
+| widgets | widget | `AnimationStackedWidget` |
+| widgets | window | `FramelessWidget` / `FramelessDialog` / `FramelessHandler` / `TitleBar` / `MessageBox` / `NotifyWindow` / `SplashScreen` |
 
-单实例典型用法:
+主题三行起步:
 
 ```cpp
 QApplication app(argc, argv);
-SingleInstance guard(QStringLiteral("my-app-key"));
-if(!guard.isPrimary())
-{
-    guard.sendMessage(QStringLiteral("activate")); // 通知已有实例后退出
-    return 0;
-}
-QObject::connect(&guard, &SingleInstance::messageReceived, &window, [&window]() {
-    window.showNormal(); window.raise(); window.activateWindow();
-});
+Theme::instance()->apply();                      // 启动时应用主题(全局 QSS + QPalette)
+Theme::instance()->setMode(Theme::Mode::Dark);   // 即时切换,吃令牌的控件自动重绘
 ```
+
+core 依赖 Qt::Core + Qt::Network(QLocalServer/QLocalSocket),使用方 `find_package(...)` 需包含 `Network` 组件;qmake 接入无需额外处理(common.pri 已加 `QT += network`)。
 
 ## CMake 接入(FetchContent)
 
@@ -45,7 +41,7 @@ QObject::connect(&guard, &SingleInstance::messageReceived, &window, [&window]() 
 include(FetchContent)
 FetchContent_Declare(common
     GIT_REPOSITORY https://github.com/zanbeau/common.git
-    GIT_TAG        v0.6.0   # 建议锁定版本
+    GIT_TAG        v0.7.0   # 建议锁定版本
 )
 FetchContent_MakeAvailable(common)
 
@@ -80,3 +76,5 @@ ctest --test-dir build-qt5   # Windows 运行测试前需把 Qt 的 bin 目录�
 
 需在 VS x64 环境下构建;tests/(offscreen 平台)、examples/ 仅在单独构建时编译。
 构建侧统一设置 `QT_DISABLE_DEPRECATED_BEFORE=0x050F00`,禁止使用 Qt 5.15 之前已弃用的 API,保证双版本长期干净编译。
+
+examples/ 是控件浏览器(gallery):每类控件一页演示,`widgets_demo.exe` 打开即见,第一页可切换亮暗主题看全局换肤。

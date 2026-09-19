@@ -3,13 +3,29 @@
 #include <QEvent>
 #include <QLabel>
 #include <QMouseEvent>
+#include <QPixmap>
+#include <QPointer>
+#include <QVBoxLayout>
 
 #include "animationstackedwidget.h"
 #include "clickedlabel.h"
 #include "clickedslider.h"
+#include "duration.h"
+#include "framelessdialog.h"
 #include "framelesswidget.h"
 #include "marqueelabel.h"
+#include "messagebox.h"
+#include "notifywindow.h"
+#include "pushbutton.h"
+#include "rotatelabel.h"
+#include "searchinput.h"
+#include "splashscreen.h"
+#include "theme.h"
+#include "tipslider.h"
 #include "toastlabel.h"
+#include "titlebar.h"
+#include "toggleswitch.h"
+#include "transitionlabel.h"
 #include "waitspinner.h"
 
 class TstWidgets : public QObject
@@ -26,6 +42,18 @@ private slots:
     void framelessMove();
     void framelessResize();
     void framelessDoubleClick();
+    void theme();
+    void framelessDialog();
+    void notifyWindow();
+    void splashScreen();
+    void pushButton();
+    void toggleSwitch();
+    void searchInput();
+    void tipSlider();
+    void transitionLabel();
+    void rotateLabel();
+    void titleBar();
+    void messageBox();
 };
 
 void TstWidgets::clickedLabel()
@@ -56,6 +84,14 @@ void TstWidgets::toastLabel()
 
     ToastLabel toast(QStringLiteral("hello"), &host);
     QVERIFY(!toast.isVisible());
+
+    // 主题化样式:反色深底 + 令牌圆角,切暗色后颜色随之变化
+    const QString lightSheet = toast.styleSheet();
+    QVERIFY(lightSheet.contains(
+        Theme::instance()->color(Theme::Role::InverseSurface).name()));
+    Theme::instance()->setMode(Theme::Mode::Dark);
+    QVERIFY(toast.styleSheet() != lightSheet);
+    Theme::instance()->setMode(Theme::Mode::Light);
 
     toast.popup(100, 50);
     QVERIFY(toast.isVisible());
@@ -146,6 +182,13 @@ void TstWidgets::waitSpinner()
 
     spinner.stop();
     QVERIFY(!spinner.isSpinning());
+
+    // 默认色取主题主色;设过自定义色后不再跟随主题
+    QCOMPARE(spinner.color(), Theme::instance()->color(Theme::Role::Primary));
+    spinner.setColor(QColor(0, 128, 0));
+    Theme::instance()->setMode(Theme::Mode::Dark);
+    QCOMPARE(spinner.color(), QColor(0, 128, 0));
+    Theme::instance()->setMode(Theme::Mode::Light);
 
     // 属性回读
     spinner.setLoopDuration(500);
@@ -274,6 +317,336 @@ void TstWidgets::framelessDoubleClick()
 
     QApplication::sendEvent(&w, &dblClick);
     QTRY_VERIFY(!w.isMaximized());
+}
+
+void TstWidgets::theme()
+{
+    Theme *theme = Theme::instance();
+    QCOMPARE(theme->mode(), Theme::Mode::Light);
+
+    QSignalSpy spy(theme, &Theme::modeChanged);
+    const QColor lightBg = theme->color(Theme::Role::Background);
+
+    theme->setMode(Theme::Mode::Dark);
+    QCOMPARE(spy.count(), 1);
+    QVERIFY(theme->color(Theme::Role::Background) != lightBg);
+
+    // 重复设置不触发
+    theme->setMode(Theme::Mode::Dark);
+    QCOMPARE(spy.count(), 1);
+
+    // 亮暗两套都满足"底色浅、文字深"(或反之)的可读性约束
+    const QColor darkText = theme->color(Theme::Role::Text);
+    const QColor darkBg = theme->color(Theme::Role::Background);
+    QVERIFY(darkText.lightness() > darkBg.lightness());
+
+    // QSS 生成且随模式变化;apply() 后挂到应用上,setMode 即时刷新
+    const QString darkSheet = theme->styleSheet();
+    QVERIFY(!darkSheet.isEmpty());
+    theme->apply();
+    QVERIFY(!qApp->styleSheet().isEmpty());
+    theme->setMode(Theme::Mode::Light);
+    QVERIFY(qApp->styleSheet() != darkSheet);
+
+    // 回归:apply() 必须先调色板后样式表。QSS 下已存在控件只在重 polish 时
+    // 快照应用调色板,顺序反了会慢一拍——切回亮色后 QLabel 白底白字"消失"
+    QLabel follower(QStringLiteral("主题切换跟随"));
+    follower.ensurePolished();
+    theme->setMode(Theme::Mode::Dark);
+    QCOMPARE(follower.palette().color(QPalette::WindowText),
+             theme->color(Theme::Role::Text));
+    theme->setMode(Theme::Mode::Light);
+    QCOMPARE(follower.palette().color(QPalette::WindowText),
+             theme->color(Theme::Role::Text));
+
+    // 尺寸/字号令牌透出
+    QCOMPARE(theme->radius(Tokens::Radius::MD), 6);
+    QCOMPARE(theme->spacing(Tokens::Spacing::LG), 16);
+    QCOMPARE(theme->fontPx(Tokens::FontSize::Body), 13);
+}
+
+void TstWidgets::framelessDialog()
+{
+    FramelessDialog dialog;
+    QVERIFY(dialog.windowFlags() & Qt::FramelessWindowHint);
+    QCOMPARE(dialog.resizeMargin(), 5);
+    dialog.setResizeMargin(9);
+    QCOMPARE(dialog.resizeMargin(), 9);
+
+    // 与 FramelessWidget 同一套拖动行为(offscreen 走手动回退路径)
+    dialog.resize(400, 300);
+    dialog.show();
+    QTRY_VERIFY(dialog.isVisible());
+
+    const QPoint oldPos = dialog.pos();
+    const QPoint local(200, 150);
+    const QPoint global = dialog.mapToGlobal(local);
+
+    QMouseEvent press(QEvent::MouseButtonPress, QPointF(local), QPointF(global),
+                      Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&dialog, &press);
+
+    const QPoint moved = global + QPoint(40, 20);
+    QMouseEvent move(QEvent::MouseMove, QPointF(local + QPoint(40, 20)), QPointF(moved),
+                     Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&dialog, &move);
+
+    QMouseEvent release(QEvent::MouseButtonRelease, QPointF(local + QPoint(40, 20)),
+                        QPointF(moved), Qt::LeftButton, Qt::NoButton, {});
+    QApplication::sendEvent(&dialog, &release);
+
+    QCOMPARE(dialog.pos(), oldPos + QPoint(40, 20));
+}
+
+void TstWidgets::notifyWindow()
+{
+    // 到点自动淡出销毁
+    QPointer<NotifyWindow> expired =
+        NotifyWindow::showMessage(QStringLiteral("标题"), QStringLiteral("内容"), 400);
+    QVERIFY(expired->isVisible());
+    QTRY_VERIFY_WITH_TIMEOUT(expired.isNull(), 5000);
+
+    // 点击触发 clicked 并立即关闭
+    QPointer<NotifyWindow> clicked =
+        NotifyWindow::showMessage(QStringLiteral("标题"), QStringLiteral("内容"), 60000);
+    QTRY_VERIFY(clicked->isVisible());
+    QSignalSpy spy(clicked.data(), &NotifyWindow::clicked);
+    QTest::mouseClick(clicked.data(), Qt::LeftButton);
+    QCOMPARE(spy.count(), 1);
+    QTRY_VERIFY_WITH_TIMEOUT(clicked.isNull(), 3000);
+}
+
+void TstWidgets::splashScreen()
+{
+    QPixmap logo(64, 64);
+    logo.fill(Qt::blue);
+
+    QPointer<SplashScreen> splash = new SplashScreen(logo);
+    splash->show();
+    QTRY_VERIFY(splash->isVisible());
+
+    splash->showMessage(QStringLiteral("正在加载"));
+    QCOMPARE(splash->message(), QStringLiteral("正在加载"));
+    QCOMPARE(splash->pixmap().size(), QSize(64, 64));
+
+    // finish() 淡出后自毁
+    splash->finish();
+    QTRY_VERIFY_WITH_TIMEOUT(splash.isNull(), 5000);
+}
+
+void TstWidgets::pushButton()
+{
+    PushButton button(QStringLiteral("确定"), PushButton::Type::Primary);
+    QCOMPARE(button.type(), PushButton::Type::Primary);
+
+    QSignalSpy spy(&button, &PushButton::clicked);
+    button.setType(PushButton::Type::Danger);
+    QCOMPARE(button.type(), PushButton::Type::Danger);
+    QTest::mouseClick(&button, Qt::LeftButton);
+    QCOMPARE(spy.count(), 1);
+
+    // 四种类型(含禁用态)都能完成一次自绘
+    for(int type = 0; type <= static_cast<int>(PushButton::Type::Text); ++type)
+    {
+        PushButton sample(QStringLiteral("按钮"), static_cast<PushButton::Type>(type));
+        sample.setEnabled(false);
+        QVERIFY(!sample.grab().isNull());
+    }
+    QVERIFY(!button.grab().isNull());
+}
+
+void TstWidgets::toggleSwitch()
+{
+    ToggleSwitch toggle;
+    toggle.show();
+    QVERIFY(!toggle.isChecked());
+
+    QSignalSpy toggledSpy(&toggle, &ToggleSwitch::toggled);
+    QTest::mouseClick(&toggle, Qt::LeftButton);
+    QVERIFY(toggle.isChecked());
+    QCOMPARE(toggledSpy.count(), 1);
+    QCOMPARE(toggledSpy.takeFirst().at(0).toBool(), true); // takeFirst 后计数归零
+    // 滑块动效推进到开位
+    QTRY_COMPARE(toggle.knobPos(), 1.0);
+
+    // setChecked 同值不发信号
+    toggle.setChecked(true);
+    QCOMPARE(toggledSpy.count(), 0);
+    toggle.setChecked(false);
+    QCOMPARE(toggledSpy.count(), 1);
+
+    // 空格键切换
+    QTest::keyClick(&toggle, Qt::Key_Space);
+    QVERIFY(toggle.isChecked());
+    QCOMPARE(toggledSpy.count(), 2);
+    QVERIFY(!toggle.grab().isNull());
+}
+
+void TstWidgets::searchInput()
+{
+    SearchInput input(QStringLiteral("搜索歌曲"));
+    QCOMPARE(input.placeholderText(), QStringLiteral("搜索歌曲"));
+    QVERIFY(input.actions().contains(input.leadingAction()));
+
+    input.setText(QStringLiteral("hello"));
+    QSignalSpy spy(&input, &SearchInput::searchRequested);
+    QTest::keyClick(&input, Qt::Key_Return);
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.takeFirst().at(0).toString(), QStringLiteral("hello"));
+}
+
+void TstWidgets::tipSlider()
+{
+    TipSlider slider(Qt::Horizontal);
+    slider.setRange(0, 60000);
+    slider.resize(200, 30);
+    slider.show();
+    QTRY_VERIFY(slider.isVisible());
+
+    // 悬停到中点附近:气泡显示,文案是中点值的 mm:ss
+    QMouseEvent move(QEvent::MouseMove, QPointF(100, 15), QPointF(100, 15),
+                     Qt::NoButton, Qt::NoButton, {});
+    QApplication::sendEvent(&slider, &move);
+    QVERIFY(slider.isTipVisible());
+    QCOMPARE(slider.tipText(), QStringLiteral("00:30"));
+
+    // 自定义 formatter 生效
+    slider.setFormatter([](int value) { return QString::number(value / 1000) + QStringLiteral("s"); });
+    QApplication::sendEvent(&slider, &move);
+    QCOMPARE(slider.tipText(), QStringLiteral("30s"));
+
+    // 移出后气泡收起
+    QEvent leave(QEvent::Leave);
+    QApplication::sendEvent(&slider, &leave);
+    QVERIFY(!slider.isTipVisible());
+}
+
+void TstWidgets::transitionLabel()
+{
+    QPixmap first(64, 64), second(64, 64);
+    first.fill(Qt::red);
+    second.fill(Qt::green);
+
+    TransitionLabel label;
+    label.resize(128, 128);
+    label.show();
+
+    // 首次设置直接显示,不动效
+    label.setPixmap(first);
+    QVERIFY(!label.isAnimating());
+
+    // 第二次设置触发交叉渐变,完成后停在新的图上
+    label.setPixmap(second);
+    QVERIFY(label.isAnimating());
+    QTRY_VERIFY(!label.isAnimating());
+    QCOMPARE(label.pixmap().toImage(), second.toImage());
+
+    label.setDuration(50);
+    QCOMPARE(label.duration(), 50);
+    label.setPixmap(first);
+    QVERIFY(label.isAnimating());
+    QTRY_VERIFY_WITH_TIMEOUT(!label.isAnimating(), 2000);
+    QVERIFY(!label.grab().isNull());
+}
+
+void TstWidgets::rotateLabel()
+{
+    QPixmap cover(100, 100);
+    cover.fill(Qt::darkBlue);
+
+    RotateLabel label;
+    label.setPixmap(cover);
+    label.resize(160, 160);
+    label.show();
+
+    QVERIFY(!label.isRunning());
+    label.setRunning(true);
+    QVERIFY(label.isRunning());
+    QTRY_VERIFY(label.angle() > 0);
+
+    label.setLoopDuration(2000);
+    QCOMPARE(label.loopDuration(), 2000);
+    label.setCircular(true);
+    QVERIFY(label.isCircular());
+    QVERIFY(!label.grab().isNull());
+
+    label.setRunning(false);
+    QVERIFY(!label.isRunning());
+}
+
+void TstWidgets::titleBar()
+{
+    FramelessWidget window;
+    window.resize(400, 300);
+    QVBoxLayout *windowLayout = new QVBoxLayout(&window);
+    windowLayout->setContentsMargins(0, 0, 0, 0);
+    windowLayout->setSpacing(0);
+    TitleBar bar(&window, QStringLiteral("测试窗口"));
+    windowLayout->addWidget(&bar);
+    window.show();
+    QTRY_VERIFY(window.isVisible());
+
+    // 标题读写 / 关闭按钮显隐
+    QCOMPARE(bar.title(), QStringLiteral("测试窗口"));
+    bar.setTitle(QStringLiteral("新标题"));
+    QCOMPARE(bar.title(), QStringLiteral("新标题"));
+    QVERIFY(bar.isClosable());
+    bar.setClosable(false);
+    QVERIFY(!bar.isClosable());
+    bar.setClosable(true);
+
+    // 最大化/还原按钮驱动窗口状态(事件过滤器切换图形)
+    QWidget *maxButton = bar.findChild<QWidget *>(QStringLiteral("maxButton"));
+    QVERIFY(maxButton);
+    QTest::mouseClick(maxButton, Qt::LeftButton);
+    QTRY_VERIFY(window.isMaximized());
+    QTest::mouseClick(maxButton, Qt::LeftButton);
+    QTRY_VERIFY(!window.isMaximized());
+
+    // 关闭按钮:先发 closeRequested 再关窗
+    QSignalSpy spy(&bar, &TitleBar::closeRequested);
+    QWidget *closeButton = bar.findChild<QWidget *>(QStringLiteral("closeButton"));
+    QVERIFY(closeButton);
+    QTest::mouseClick(closeButton, Qt::LeftButton);
+    QCOMPARE(spy.count(), 1);
+    QTRY_VERIFY(!window.isVisible());
+    QVERIFY(!bar.grab().isNull()); // 关闭后仍可离屏自绘
+}
+
+void TstWidgets::messageBox()
+{
+    MessageBox box(QStringLiteral("提示"), QStringLiteral("已保存到本地"),
+                   MessageBox::Icon::Information);
+    QVERIFY(box.windowFlags() & Qt::FramelessWindowHint);
+    QCOMPARE(box.text(), QStringLiteral("已保存到本地"));
+    box.setText(QStringLiteral("内容已更新"));
+    QCOMPARE(box.text(), QStringLiteral("内容已更新"));
+
+    box.show();
+    QTRY_VERIFY(box.isVisible());
+
+    // 点"确定"走 accepted
+    QSignalSpy spy(&box, &MessageBox::accepted);
+    PushButton *ok = nullptr;
+    for(PushButton *button : box.findChildren<PushButton *>())
+    {
+        if(button->objectName() == QLatin1String("okButton"))
+        {
+            ok = button;
+            break;
+        }
+    }
+    QVERIFY(ok);
+    QTest::mouseClick(ok, Qt::LeftButton);
+    QCOMPARE(spy.count(), 1);
+
+    // 四种图标都能构造并完成一次自绘
+    for(int icon = 0; icon <= static_cast<int>(MessageBox::Icon::Question); ++icon)
+    {
+        MessageBox sample(QStringLiteral("t"), QStringLiteral("b"),
+                          static_cast<MessageBox::Icon>(icon));
+        QVERIFY(!sample.grab().isNull());
+    }
 }
 
 // 等价 QTEST_MAIN,但需在 QApplication 构造前为 Qt5 开启 High-DPI

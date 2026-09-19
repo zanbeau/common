@@ -6,6 +6,12 @@ add_executable(widgets_demo WIN32
     pages/framelessdemowindow.cpp
     pages/framelesspage.h
     pages/framelesspage.cpp
+    pages/framelessdialogpage.h
+    pages/framelessdialogpage.cpp
+    pages/titlebarpage.h
+    pages/titlebarpage.cpp
+    pages/messageboxpage.h
+    pages/messageboxpage.cpp
     pages/clickedlabelpage.h
     pages/clickedlabelpage.cpp
     pages/clickedsliderpage.h
@@ -18,5 +24,23 @@ add_executable(widgets_demo WIN32
     pages/animationstackedpage.cpp
     pages/toastpage.h
     pages/toastpage.cpp
+    pages/themepage.h
+    pages/themepage.cpp
+    pages/pushbuttonpage.h
+    pages/pushbuttonpage.cpp
+    pages/toggleswitchpage.h
+    pages/toggleswitchpage.cpp
+    pages/searchinputpage.h
+    pages/searchinputpage.cpp
+    pages/tipsliderpage.h
+    pages/tipsliderpage.cpp
+    pages/transitionlabelpage.h
+    pages/transitionlabelpage.cpp
+    pages/rotatelabelpage.h
+    pages/rotatelabelpage.cpp
+    pages/notifywindowpage.h
+    pages/notifywindowpage.cpp
+    pages/splashscreenpage.h
+    pages/splashscreenpage.cpp
 )
 target_link_libraries(widgets_demo PRIVATE canfan::widgets)

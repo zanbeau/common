@@ -6,14 +6,16 @@
 #include <QScreen>
 #include <QTimer>
 
+#include "theme.h"
+
 ToastLabel::ToastLabel(const QString &text, QWidget *parent)
     : QLabel(text, parent)
 {
     setAlignment(Qt::AlignCenter);
     setMargin(12);
     setAttribute(Qt::WA_TransparentForMouseEvents); // 不遮挡下层控件的点击
-    setStyleSheet(QStringLiteral("ToastLabel{background:rgba(40,40,40,215);"
-                                 "color:#ffffff;border-radius:8px;}"));
+    applyThemeStyle();
+    connect(Theme::instance(), &Theme::modeChanged, this, &ToastLabel::applyThemeStyle);
 
     m_effect = new QGraphicsOpacityEffect(this);
     m_effect->setOpacity(1.0);
@@ -27,6 +29,16 @@ ToastLabel::ToastLabel(const QString &text, QWidget *parent)
     m_timer->setSingleShot(true);
     connect(m_timer, &QTimer::timeout, this, &ToastLabel::startFade);
     connect(m_fade, &QPropertyAnimation::finished, this, &QWidget::hide);
+}
+
+void ToastLabel::applyThemeStyle()
+{
+    // 反色表面(亮暗模式都取深底浅字,与 Toast 的提示定位一致)
+    Theme *theme = Theme::instance();
+    setStyleSheet(QStringLiteral("ToastLabel{background:%1;color:%2;border-radius:%3px;}")
+                      .arg(theme->color(Theme::Role::InverseSurface).name())
+                      .arg(theme->color(Theme::Role::InverseText).name())
+                      .arg(theme->radius(Tokens::Radius::MD)));
 }
 
 void ToastLabel::popup(int duration, int fadeDuration)
