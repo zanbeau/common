@@ -14,6 +14,7 @@
 #include "coverflow.h"
 #include "duration.h"
 #include "framelessdialog.h"
+#include "framelesshandler.h"
 #include "framelesswidget.h"
 #include "marqueelabel.h"
 #include "messagebox.h"
@@ -265,24 +266,49 @@ void TstWidgets::framelessMove()
     w.show();
     QTRY_VERIFY(w.isVisible());
 
+    // 自 v0.10.0 起,拖动只认 watch 面板(标题栏);内容区按下不拖动窗口。
+    // 这里用一个 watch 面板模拟标题栏
+    QWidget dragPanel(&w);
+    dragPanel.setGeometry(0, 0, 400, 32);
+    dragPanel.show();
+    FramelessHandler drag(&w, &w, false); // 只 watch,不过滤窗口本体
+    drag.watch(&dragPanel);
+
     // offscreen 平台上 startSystemMove 返回 false,走手动回退路径
     const QPoint oldPos = w.pos();
-    const QPoint local(200, 150);
-    const QPoint global = w.mapToGlobal(local);
+    const QPoint panelLocal(200, 15);
+    const QPoint global = dragPanel.mapToGlobal(panelLocal);
 
-    QMouseEvent press(QEvent::MouseButtonPress, QPointF(local), QPointF(global),
+    QMouseEvent press(QEvent::MouseButtonPress, QPointF(panelLocal), QPointF(global),
                       Qt::LeftButton, Qt::LeftButton, {});
-    QApplication::sendEvent(&w, &press);
+    QApplication::sendEvent(&dragPanel, &press);
 
     const QPoint moved = global + QPoint(50, 30);
-    QMouseEvent move(QEvent::MouseMove, QPointF(local + QPoint(50, 30)), QPointF(moved),
+    QMouseEvent move(QEvent::MouseMove, QPointF(panelLocal + QPoint(50, 30)), QPointF(moved),
                      Qt::LeftButton, Qt::LeftButton, {});
-    QApplication::sendEvent(&w, &move);
+    QApplication::sendEvent(&dragPanel, &move);
 
-    QMouseEvent release(QEvent::MouseButtonRelease, QPointF(local + QPoint(50, 30)), QPointF(moved),
-                        Qt::LeftButton, Qt::NoButton, {});
-    QApplication::sendEvent(&w, &release);
+    QMouseEvent release(QEvent::MouseButtonRelease, QPointF(panelLocal + QPoint(50, 30)),
+                        QPointF(moved), Qt::LeftButton, Qt::NoButton, {});
+    QApplication::sendEvent(&dragPanel, &release);
 
+    QCOMPARE(w.pos(), oldPos + QPoint(50, 30));
+
+    // 内容区(窗口本体)按下拖动:窗口不动(播放栏空白处拖动的回归用例)
+    const QPoint contentLocal(200, 150);
+    const QPoint contentGlobal = w.mapToGlobal(contentLocal);
+    QMouseEvent contentPress(QEvent::MouseButtonPress, QPointF(contentLocal),
+                             QPointF(contentGlobal), Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&w, &contentPress);
+    QMouseEvent contentMove(QEvent::MouseMove, QPointF(contentLocal + QPoint(60, 40)),
+                            QPointF(contentGlobal + QPoint(60, 40)),
+                            Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&w, &contentMove);
+    QMouseEvent contentRelease(QEvent::MouseButtonRelease,
+                               QPointF(contentLocal + QPoint(60, 40)),
+                               QPointF(contentGlobal + QPoint(60, 40)),
+                               Qt::LeftButton, Qt::NoButton, {});
+    QApplication::sendEvent(&w, &contentRelease);
     QCOMPARE(w.pos(), oldPos + QPoint(50, 30));
 }
 
@@ -349,15 +375,31 @@ void TstWidgets::framelessDoubleClick()
     w.show();
     QTRY_VERIFY(w.isVisible());
 
-    const QPointF local(200, 150);
-    QMouseEvent dblClick(QEvent::MouseButtonDblClick, local, local + QPointF(w.x(), w.y()),
+    // 双击最大化只认 watch 面板;用面板模拟标题栏
+    QWidget dragPanel(&w);
+    dragPanel.setGeometry(0, 0, 400, 32);
+    dragPanel.show();
+    FramelessHandler drag(&w, &w, false);
+    drag.watch(&dragPanel);
+
+    const QPointF panelLocal(200, 15);
+    QMouseEvent dblClick(QEvent::MouseButtonDblClick, panelLocal,
+                         panelLocal + QPointF(w.x(), w.y()),
                          Qt::LeftButton, Qt::LeftButton, {});
 
-    QApplication::sendEvent(&w, &dblClick);
+    QApplication::sendEvent(&dragPanel, &dblClick);
     QTRY_VERIFY(w.isMaximized());
 
-    QApplication::sendEvent(&w, &dblClick);
+    QApplication::sendEvent(&dragPanel, &dblClick);
     QTRY_VERIFY(!w.isMaximized());
+
+    // 内容区双击不再最大化(v0.10.0 语义)
+    const QPointF content(200, 150);
+    QMouseEvent contentDbl(QEvent::MouseButtonDblClick, content,
+                           content + QPointF(w.x(), w.y()),
+                           Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&w, &contentDbl);
+    QVERIFY(!w.isMaximized());
 }
 
 void TstWidgets::theme()
@@ -414,27 +456,33 @@ void TstWidgets::framelessDialog()
     dialog.setResizeMargin(9);
     QCOMPARE(dialog.resizeMargin(), 9);
 
-    // 与 FramelessWidget 同一套拖动行为(offscreen 走手动回退路径)
+    // 与 FramelessWidget 同一套拖动行为(面板拖动;offscreen 走手动回退路径)
     dialog.resize(400, 300);
     dialog.show();
     QTRY_VERIFY(dialog.isVisible());
 
+    QWidget dragPanel(&dialog);
+    dragPanel.setGeometry(0, 0, 400, 32);
+    dragPanel.show();
+    FramelessHandler drag(&dialog, &dialog, false);
+    drag.watch(&dragPanel);
+
     const QPoint oldPos = dialog.pos();
-    const QPoint local(200, 150);
-    const QPoint global = dialog.mapToGlobal(local);
+    const QPoint local(200, 15);
+    const QPoint global = dragPanel.mapToGlobal(local);
 
     QMouseEvent press(QEvent::MouseButtonPress, QPointF(local), QPointF(global),
                       Qt::LeftButton, Qt::LeftButton, {});
-    QApplication::sendEvent(&dialog, &press);
+    QApplication::sendEvent(&dragPanel, &press);
 
     const QPoint moved = global + QPoint(40, 20);
     QMouseEvent move(QEvent::MouseMove, QPointF(local + QPoint(40, 20)), QPointF(moved),
                      Qt::LeftButton, Qt::LeftButton, {});
-    QApplication::sendEvent(&dialog, &move);
+    QApplication::sendEvent(&dragPanel, &move);
 
     QMouseEvent release(QEvent::MouseButtonRelease, QPointF(local + QPoint(40, 20)),
                         QPointF(moved), Qt::LeftButton, Qt::NoButton, {});
-    QApplication::sendEvent(&dialog, &release);
+    QApplication::sendEvent(&dragPanel, &release);
 
     QCOMPARE(dialog.pos(), oldPos + QPoint(40, 20));
 }
