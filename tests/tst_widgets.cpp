@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include <QEvent>
+#include <QImage>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPixmap>
@@ -480,6 +481,22 @@ void TstWidgets::toggleSwitch()
     QVERIFY(toggle.isChecked());
     QCOMPARE(toggledSpy.count(), 2);
     QVERIFY(!toggle.grab().isNull());
+
+    // 焦点圈只在键盘导航(Tab)获得焦点时绘制,鼠标点击的焦点不改变外观
+    QTRY_COMPARE(toggle.knobPos(), 1.0);
+    const QImage baseImage = toggle.grab().toImage();
+    toggle.setFocus(Qt::MouseFocusReason);
+    QVERIFY(toggle.hasFocus());
+    QCOMPARE(toggle.grab().toImage(), baseImage);
+
+    toggle.clearFocus();
+    toggle.setFocus(Qt::TabFocusReason);
+    const QImage tabFocusImage = toggle.grab().toImage();
+    QVERIFY(tabFocusImage != baseImage);  // Tab 焦点画出焦点圈
+
+    toggle.clearFocus();
+    QVERIFY(!toggle.hasFocus());
+    QCOMPARE(toggle.grab().toImage(), baseImage);  // 失焦后焦点圈消失
 }
 
 void TstWidgets::searchInput()

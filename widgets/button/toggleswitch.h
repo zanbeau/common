@@ -28,11 +28,14 @@ protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
+    void focusInEvent(QFocusEvent *event) override;
+    void focusOutEvent(QFocusEvent *event) override;
 
 private:
     void toggle();
 
     bool m_checked = false;
     bool m_pressedInside = false;
+    bool m_keyboardFocus = false;  // 焦点是否来自键盘导航,决定是否画焦点圈
     QVariantAnimation m_knob;
 };
