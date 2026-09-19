@@ -19,6 +19,8 @@ public:
 
     explicit PushButton(const QString &text = {}, Type type = Type::Default,
                         QWidget *parent = nullptr);
+    // QPushButton 惯用形态的便捷构造(text, parent),等价于 Default 型
+    explicit PushButton(const QString &text, QWidget *parent);
 
     Type type() const;
     void setType(Type type);

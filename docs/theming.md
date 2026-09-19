@@ -17,7 +17,7 @@ Theme::instance()->apply();                    // 启动时应用:全局 QSS + Q
 Theme::instance()->setMode(Theme::Mode::Dark); // 即时切换,所有吃令牌的控件自动重绘
 ```
 
-`apply()` 覆盖的基础件:`QPushButton`、`QLineEdit`/`QPlainTextEdit`/`QTextEdit`、`QListView`/`QListWidget`、`QMenu`、`QToolTip`、`QSlider`、`QComboBox`(含下拉面板)、`QCheckBox`/`QRadioButton`、`QScrollBar`、`QTabWidget`/`QTabBar`、`QProgressBar`,以及通过 QPalette 联动的 `QLabel` 等原生件。库内自绘控件(PushButton、ToggleSwitch 等)不依赖全局 QSS,直接读令牌。
+`apply()` 覆盖的基础件:`QPushButton`、`QLineEdit`/`QPlainTextEdit`/`QTextEdit`、`QListView`/`QListWidget`、`QMenu`、`QToolTip`、`QSlider`、`QComboBox`(含下拉面板)、`QCheckBox`/`QRadioButton`、`QScrollBar`、`QTabWidget`/`QTabBar`、`QTableView`/`QHeaderView`、`QProgressBar`,以及通过 QPalette 联动的 `QLabel` 等原生件。库内自绘控件(PushButton、ToggleSwitch 等)不依赖全局 QSS,直接读令牌。
 
 ## 语义色角色
 

@@ -19,6 +19,11 @@ PushButton::PushButton(const QString &text, Type type, QWidget *parent)
     connect(Theme::instance(), &Theme::modeChanged, this, [this]() { update(); });
 }
 
+PushButton::PushButton(const QString &text, QWidget *parent)
+    : PushButton(text, Type::Default, parent)
+{
+}
+
 PushButton::Type PushButton::type() const
 {
     return m_type;

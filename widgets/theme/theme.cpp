@@ -219,6 +219,30 @@ QString Theme::styleSheet() const
         .arg(md)
         .arg(textSecondary, text, primary);
 
+    // 表格:去系统网格线,选中行主色底
+    sheet += QStringLiteral(
+        "QTableView {"
+        "  background-color: %1; border: 1px solid %2; border-radius: %3px;"
+        "  gridline-color: %2; outline: none; color: %4; font-size: %5px;"
+        "  alternate-background-color: %6; selection-background-color: %7;"
+        "  selection-color: %8;"
+        "}"
+        "QTableView::item { padding: 5px 8px; border: none; }"
+        "QTableView::item:hover { background: %9; }"
+        "QHeaderView { background: transparent; border: none; }"
+        "QHeaderView::section {"
+        "  background-color: %10; color: %11; border: none;"
+        "  border-bottom: 1px solid %2; padding: 6px 8px; font-weight: bold;"
+        "}"
+        "QTableCornerButton::section { background-color: %10; border: none; }")
+        .arg(surface, border)
+        .arg(md)
+        .arg(text)
+        .arg(body)
+        .arg(surfaceVariant, primary, onPrimary, surfaceVariant)
+        .arg(surface)
+        .arg(textSecondary);
+
     sheet += QStringLiteral(
         "QProgressBar {"
         "  border: none; background-color: %1; border-radius: 4px;"
