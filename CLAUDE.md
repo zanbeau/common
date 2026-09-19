@@ -28,6 +28,8 @@ Two static libraries, layered strictly. Directory name = category (TTKModule-sty
   - `slider/tipslider` — ClickedSlider + hover bubble (top-level Qt::ToolTip child, positioned in global coords — a child widget would be clipped); default formatter is `Duration::format(ms)`, `setFormatter()` replaces it; horizontal only
   - `progress/waitspinner` — indeterminate rotating-arc spinner (QVariantAnimation-driven `angle()`); default color follows Theme Primary unless `setColor()` was called (`m_customColor` flag)
   - `widget/animationstackedwidget` — QStackedWidget with slide transitions; requests during animation are ignored; destructor defensively detaches animation targets (destroying a running group mid-destruction otherwise crashes)
+  - `widget/sidenav` — Ant-Menu-style vertical nav (selected item = primary tint + left indicator bar); click or Up/Down keys; plain-QWidget press-accept pattern again applies
+  - `widget/coverflow` — coverflow strip with reflections (paints its own Background-role backdrop so the reflection fade gradient can reuse it); wheel/keys/drag; drag updates a live qreal position, release snaps with animation
   - `window/framelesswidget` — frameless window: client-area drag, 8-direction edge resize (5px default margin, `setResizeMargin()`), double-click maximize/restore. Prefers native `startSystemMove`/`startSystemResize` (Windows snap, Wayland), falls back to manual implementation when the platform doesn't take over.
   - `window/framelesshandler` — the event-filter object that implements the above behavior (extracted so `FramelessDialog` shares it; installed on the target window, never consumes the events)
   - `window/framelessdialog` — QDialog with the same frameless behavior via FramelessHandler
@@ -72,6 +74,8 @@ ctest --test-dir build-qt5
 
 Both configurations must stay green — build and test both before tagging a release. One toolchain pitfall: `build/` is pinned to the VS2022 cl on the D: drive; running its build under the VS18 vcvars env mixes a newer STL with the older cached compiler (STL1001). Always enter the environment matching the compiler a build dir was configured with.
 
+CI runs the same matrix on GitHub Actions (`.github/workflows/ci.yml`: ubuntu/windows × Qt 5.15.2/6.8.3, install-qt-action + msvc-dev-cmd, build + ctest, offscreen on Linux) on every push to main, tags, and PRs.
+
 `build-test/` is configured with the Visual Studio 17 2022 generator (open `build-test/common.sln`, or `cmake --build build-test`). Tests live in `tests/` (`tst_core`, `tst_widgets`, run on the offscreen QPA platform). Note: QTest console output is invisible when stdout is redirected from git-bash/cmd on this machine — run a test with `-o <file>,txt` to see results. Tests and examples only build when `common` is the top-level project. No lint/format tooling is configured. clangd is used (`.cache/clangd`; `compile_commands.json` lives in `build/`).
 
 `examples/` is a TTKExample-style widget gallery: `GalleryWindow` (left category list + right `QStackedWidget`) with `addPage(name, page)`; one demo page class per widget under `examples/pages/`. To showcase a new widget: create `examples/pages/<widget>page.{h,cpp}`, register it in `examples/CMakeLists.txt` + `examples/widgets_demo.pro` (HEADERS/SOURCES), and add one `addPage(...)` line in `examples/main.cpp`.
@@ -81,7 +85,7 @@ Both configurations must stay green — build and test both before tagging a rel
 A component counts as complete only when all seven places are updated:
 
 1. Source in the right category dir — `core/` must stay UI-free (`base/` for primitives, `application/` for app-level); controls go to `widgets/<category>/`, new category dirs allowed
-2. The layer's `add_library()` list in CMake (headers included explicitly; AUTOMOC)
+2. One name added to the `canfan_register_widget(<category> ...)` line in `widgets/CMakeLists.txt` (the helper in `widgets/register.cmake` expands sources and the category include dir automatically — new category = new line)
 3. `common.pri` HEADERS/SOURCES
 4. A test case in `tests/tst_core.cpp` / `tst_widgets.cpp`
 5. A gallery demo page: `examples/pages/<name>page.{h,cpp}` + registration in `examples/CMakeLists.txt`, `examples/widgets_demo.pro`, and one `addPage(...)` line in `examples/main.cpp`

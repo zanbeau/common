@@ -11,6 +11,7 @@
 #include "animationstackedwidget.h"
 #include "clickedlabel.h"
 #include "clickedslider.h"
+#include "coverflow.h"
 #include "duration.h"
 #include "framelessdialog.h"
 #include "framelesswidget.h"
@@ -20,6 +21,7 @@
 #include "pushbutton.h"
 #include "rotatelabel.h"
 #include "searchinput.h"
+#include "sidenav.h"
 #include "splashscreen.h"
 #include "theme.h"
 #include "tipslider.h"
@@ -55,6 +57,8 @@ private slots:
     void rotateLabel();
     void titleBar();
     void messageBox();
+    void sideNav();
+    void coverFlow();
 };
 
 void TstWidgets::clickedLabel()
@@ -664,6 +668,88 @@ void TstWidgets::messageBox()
                           static_cast<MessageBox::Icon>(icon));
         QVERIFY(!sample.grab().isNull());
     }
+}
+
+void TstWidgets::sideNav()
+{
+    SideNav nav;
+    nav.resize(200, 200);
+    nav.show();
+
+    // 首个条目自动选中,追加返回递增索引
+    QCOMPARE(nav.addItem(QStringLiteral("发现音乐")), 0);
+    QCOMPARE(nav.addItem(QStringLiteral("我的歌单")), 1);
+    QCOMPARE(nav.addItem(QStringLiteral("设置")), 2);
+    QCOMPARE(nav.count(), 3);
+    QCOMPARE(nav.currentIndex(), 0);
+    QCOMPARE(nav.itemText(1), QStringLiteral("我的歌单"));
+
+    // 点击第 3 项:发 currentChanged(2)
+    QSignalSpy spy(&nav, &SideNav::currentChanged);
+    QTest::mouseClick(&nav, Qt::LeftButton, {}, QPoint(100, 2 * 36 + 20));
+    QCOMPARE(nav.currentIndex(), 2);
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.takeFirst().at(0).toInt(), 2);
+
+    // setCurrentIndex 越界忽略、同值静默
+    nav.setCurrentIndex(5);
+    QCOMPARE(nav.currentIndex(), 2);
+    nav.setCurrentIndex(2);
+    QCOMPARE(spy.count(), 0);
+
+    // 上下键导航
+    QTest::keyClick(&nav, Qt::Key_Up);
+    QCOMPARE(nav.currentIndex(), 1);
+    QCOMPARE(spy.count(), 1);
+    QTest::keyClick(&nav, Qt::Key_Up);
+    QTest::keyClick(&nav, Qt::Key_Up); // 到顶不再移动
+    QCOMPARE(nav.currentIndex(), 0);
+    QCOMPARE(spy.count(), 2);
+    QVERIFY(!nav.grab().isNull());
+}
+
+void TstWidgets::coverFlow()
+{
+    CoverFlow flow;
+    flow.resize(480, 220);
+    flow.show();
+
+    QVector<QPixmap> covers;
+    for(int i = 0; i < 4; ++i)
+    {
+        QPixmap cover(120, 120);
+        cover.fill(Qt::GlobalColor(Qt::red + i));
+        covers.append(cover);
+    }
+    flow.setCovers(covers);
+    QCOMPARE(flow.count(), 4);
+    QCOMPARE(flow.currentIndex(), 0);
+    QCOMPARE(flow.position(), 0.0);
+
+    // 编程切换:动画滑到目标位并发信号
+    QSignalSpy spy(&flow, &CoverFlow::currentChanged);
+    flow.setCurrentIndex(3);
+    QCOMPARE(spy.count(), 1);
+    QTRY_COMPARE(flow.position(), 3.0);
+
+    // 在末张(3)向右拖回一张:释放后吸附到 2 并发信号
+    QTest::mousePress(&flow, Qt::LeftButton, {}, QPoint(300, 110));
+    QMouseEvent drag(QEvent::MouseMove, QPointF(380, 110), QPointF(380, 110),
+                     Qt::LeftButton, Qt::LeftButton, {});
+    QApplication::sendEvent(&flow, &drag);
+    QMouseEvent release(QEvent::MouseButtonRelease, QPointF(380, 110), QPointF(380, 110),
+                        Qt::LeftButton, Qt::NoButton, {});
+    QApplication::sendEvent(&flow, &release);
+    QCOMPARE(flow.currentIndex(), 2);
+    QCOMPARE(spy.count(), 2);
+    QTRY_COMPARE(flow.position(), 2.0);
+
+    // 越界与同值
+    flow.setCurrentIndex(9);
+    QCOMPARE(flow.currentIndex(), 2);
+    flow.setCurrentIndex(2);
+    QCOMPARE(spy.count(), 2);
+    QVERIFY(!flow.grab().isNull());
 }
 
 // 等价 QTEST_MAIN,但需在 QApplication 构造前为 Qt5 开启 High-DPI
