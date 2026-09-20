@@ -49,6 +49,7 @@ HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/widgets/widget/coverflow.h \
            $$PWD/widgets/window/framelesswidget.h \
            $$PWD/widgets/window/framelesshandler.h \
+           $$PWD/widgets/window/framelessshadow.h \
            $$PWD/widgets/window/framelessdialog.h \
            $$PWD/widgets/window/messagebox.h \
            $$PWD/widgets/window/notifywindow.h \
@@ -76,6 +77,7 @@ SOURCES += $$PWD/core/base/logger.cpp \
            $$PWD/widgets/widget/coverflow.cpp \
            $$PWD/widgets/window/framelesswidget.cpp \
            $$PWD/widgets/window/framelesshandler.cpp \
+           $$PWD/widgets/window/framelessshadow.cpp \
            $$PWD/widgets/window/framelessdialog.cpp \
            $$PWD/widgets/window/messagebox.cpp \
            $$PWD/widgets/window/notifywindow.cpp \

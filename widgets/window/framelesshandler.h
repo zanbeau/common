@@ -33,6 +33,11 @@ public:
     void setResizeMargin(int margin); // 边缘拉伸判定的宽度(逻辑像素)
     int resizeMargin() const;
 
+    // 客户区 widget(FramelessShadow 的内容容器):设置后边缘拉伸的
+    // 命中区从"窗口边缘 margin 内"变为"窗口与客户区之间的内缩环";
+    // 不设置或无内缩时保持原行为
+    void setClientWidget(QWidget *client);
+
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
@@ -48,6 +53,7 @@ private:
     void handleDoubleClick();
 
     QWidget *m_target = nullptr;
+    QWidget *m_client = nullptr;
     QVector<QWidget *> m_panels;
     bool m_pressed = false;
     QPoint m_pressPos;

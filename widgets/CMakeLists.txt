@@ -10,8 +10,9 @@ canfan_register_widget(progress waitspinner)
 canfan_register_widget(slider clickedslider tipslider)
 canfan_register_widget(theme tokens theme)   # tokens 为纯头文件组件
 canfan_register_widget(widget animationstackedwidget sidenav coverflow)
-canfan_register_widget(window framelesswidget framelesshandler framelessdialog
-                             titlebar messagebox notifywindow splashscreen)
+canfan_register_widget(window framelesswidget framelesshandler framelessshadow
+                             framelessdialog titlebar messagebox notifywindow
+                             splashscreen)
 
 add_library(widgets STATIC ${CANFAN_WIDGET_SOURCES})
 add_library(canfan::widgets ALIAS widgets)

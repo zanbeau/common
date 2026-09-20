@@ -206,9 +206,9 @@ QSize TitleBar::sizeHint() const
 void TitleBar::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event)
-    // 与窗口同色的底 + 底部分隔线,亮暗跟随主题
+    // 不铺底色:窗口的圆角卡片供底,铺满到边的底色会把顶角盖成方角
+    // (v0.12.0 起窗口自带阴影 + 圆角)。只画底部分隔线,亮暗跟随主题
     QPainter painter(this);
-    painter.fillRect(rect(), Theme::instance()->color(Theme::Role::Background));
     painter.setPen(QPen(Theme::instance()->color(Theme::Role::Border), 1));
     painter.drawLine(0, height() - 1, width(), height() - 1);
 

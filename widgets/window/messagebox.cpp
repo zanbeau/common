@@ -69,17 +69,14 @@ MessageBox::MessageBox(const QString &title, const QString &text, Icon icon, QWi
 {
     setMinimumWidth(340);
 
-    QVBoxLayout *root = new QVBoxLayout(this);
-    root->setContentsMargins(0, 0, 0, 0);
+    QVBoxLayout *root = contentLayout();  // 窗口卡片供底,布局挂在内容容器上
     root->setSpacing(0);
 
     TitleBar *bar = new TitleBar(this, title);
     root->addWidget(bar);
 
-    // 内容区:图标 + 文字
+    // 内容区:图标 + 文字(不铺底色,窗口的圆角卡片供底)
     QWidget *content = new QWidget;
-    content->setStyleSheet(QStringLiteral("background:%1;")
-                               .arg(Theme::instance()->color(Theme::Role::Background).name()));
     QHBoxLayout *contentRow = new QHBoxLayout(content);
     contentRow->setContentsMargins(20, 20, 20, 16);
     contentRow->setSpacing(12);
@@ -105,8 +102,6 @@ MessageBox::MessageBox(const QString &title, const QString &text, Icon icon, QWi
 
     // 按钮区:默认单个"确定"(主按钮);确认类场景再补"取消"
     QWidget *buttonRow = new QWidget;
-    buttonRow->setStyleSheet(QStringLiteral("background:%1;")
-                                 .arg(Theme::instance()->color(Theme::Role::Background).name()));
     QHBoxLayout *buttons = new QHBoxLayout(buttonRow);
     buttons->setContentsMargins(20, 0, 20, 20);
     buttons->setSpacing(8);

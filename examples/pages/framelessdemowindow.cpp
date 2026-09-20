@@ -13,17 +13,18 @@ FramelessDemoWindow::FramelessDemoWindow(QWidget *parent)
     : FramelessWidget(parent)
 {
     setObjectName("window");
+    // 窗口本体不铺底色(圆角卡片供底,铺满会把四角盖成方角);
+    // 自拼深色标题栏要自己给顶角加圆弧
     setStyleSheet(QStringLiteral(
-        "#window{background:#f4f4f4;}"
-        "#titleBar{background:#2d2d30;}"
+        "#titleBar{background:#2d2d30;border-top-left-radius:8px;"
+        "border-top-right-radius:8px;}"
         "#titleLabel{color:#ffffff;font-size:13px;}"
         "#closeLabel{color:#ffffff;font-size:14px;border-radius:4px;}"
         "#closeLabel:hover{background:#e81123;}"));
     resize(560, 380);
     setMinimumSize(360, 240);
 
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
+    QVBoxLayout *layout = contentLayout();
     layout->setSpacing(0);
 
     // 标题栏:空白处可拖动/双击最大化,右侧 ClickedLabel 充当关闭按钮
@@ -48,16 +49,25 @@ FramelessDemoWindow::FramelessDemoWindow(QWidget *parent)
     QVBoxLayout *bodyLayout = new QVBoxLayout(body);
     bodyLayout->setContentsMargins(24, 24, 24, 24);
     QLabel *hintLabel = new QLabel(QStringLiteral(
-        "拖动标题栏移动窗口\n移近窗口边缘后拖动可拉伸\n双击标题栏最大化/还原"));
+        "拖动标题栏移动窗口\n移近窗口边缘后拖动可拉伸\n双击标题栏最大化/还原\n"
+        "窗口自带阴影与圆角,最大化自动切方角"));
     hintLabel->setAlignment(Qt::AlignCenter);
     hintLabel->setStyleSheet(QStringLiteral("color:#555555;font-size:13px;"));
     QPushButton *toastButton = new QPushButton(QStringLiteral("弹出 Toast"));
     connect(toastButton, &QPushButton::clicked, this, [this]() {
         ToastLabel::showText(QStringLiteral("这是一条 Toast 提示"), this);
     });
+    QPushButton *shadowButton = new QPushButton(QStringLiteral("阴影:开"));
+    connect(shadowButton, &QPushButton::clicked, this, [this, shadowButton]() {
+        const bool enabled = !shadowEnabled();
+        setShadowEnabled(enabled);
+        shadowButton->setText(enabled ? QStringLiteral("阴影:开")
+                                      : QStringLiteral("阴影:关"));
+    });
     bodyLayout->addWidget(hintLabel);
     bodyLayout->addStretch();
     bodyLayout->addWidget(toastButton, 0, Qt::AlignCenter);
+    bodyLayout->addWidget(shadowButton, 0, Qt::AlignCenter);
     bodyLayout->addStretch();
 
     layout->addWidget(titleBar);

@@ -23,7 +23,7 @@
 | widgets | slider | `ClickedSlider` / `TipSlider` |
 | widgets | progress | `WaitSpinner` |
 | widgets | widget | `AnimationStackedWidget` / `SideNav` / `CoverFlow` |
-| widgets | window | `FramelessWidget` / `FramelessDialog` / `FramelessHandler` / `TitleBar` / `MessageBox` / `NotifyWindow` / `SplashScreen` |
+| widgets | window | `FramelessWidget` / `FramelessDialog` / `FramelessHandler` / `FramelessShadow` / `TitleBar` / `MessageBox` / `NotifyWindow` / `SplashScreen` |
 
 主题三行起步:
 

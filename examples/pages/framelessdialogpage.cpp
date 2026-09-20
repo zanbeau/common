@@ -21,14 +21,14 @@ FramelessDialogPage::FramelessDialogPage(QWidget *parent)
         dialog->resize(360, 220);
 
         QLabel *hint = new QLabel(QStringLiteral(
-            "按住客户区拖动窗口;\n"
-            "靠近边缘出现拉伸光标;双击客户区最大化/还原。"));
+            "自带阴影与圆角;按住面板拖动窗口;\n"
+            "靠近边缘出现拉伸光标;双击面板最大化/还原。"));
         hint->setAlignment(Qt::AlignCenter);
 
         PushButton *close = new PushButton(QStringLiteral("关闭"), PushButton::Type::Primary);
         connect(close, &PushButton::clicked, dialog, &QDialog::accept);
 
-        QVBoxLayout *dialogLayout = new QVBoxLayout(dialog);
+        QVBoxLayout *dialogLayout = dialog->contentLayout();
         dialogLayout->setContentsMargins(24, 24, 24, 24);
         dialogLayout->addWidget(hint);
         dialogLayout->addStretch();

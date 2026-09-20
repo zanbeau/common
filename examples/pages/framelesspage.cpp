@@ -11,9 +11,11 @@ FramelessPage::FramelessPage(QWidget *parent)
 {
     QLabel *intro = new QLabel(QStringLiteral(
         "FramelessWidget:无边框窗口基类,期待作为顶层窗口使用\n\n"
-        "  · 按住客户区可拖动窗口\n"
-        "  · 靠近窗口边缘时按住可拉伸(八个方向)\n"
-        "  · 双击客户区最大化/还原\n"
+        "  · 自带四周阴影 + 圆角卡片外观(最大化自动切方角)\n"
+        "  · 业务布局放 contentLayout(),内容自动避开阴影环\n"
+        "  · 拖动/双击最大化只认 watch 面板(如 TitleBar),\n"
+        "    内容区按下不拖动窗口\n"
+        "  · 靠近窗口边缘按住可拉伸(八个方向,命中区 = 阴影环)\n"
         "  · 拖动/拉伸优先交给窗口系统处理(原生贴边手感、Wayland 兼容),\n"
         "    窗口系统不支持时回退为手动实现"));
     intro->setTextInteractionFlags(Qt::TextSelectableByMouse);

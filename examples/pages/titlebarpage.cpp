@@ -23,8 +23,7 @@ TitleBarPage::TitleBarPage(QWidget *parent)
         window->setAttribute(Qt::WA_DeleteOnClose);
         window->setWindowTitle(QStringLiteral("标题栏演示"));
 
-        QVBoxLayout *layout = new QVBoxLayout(window);
-        layout->setContentsMargins(0, 0, 0, 0);
+        QVBoxLayout *layout = window->contentLayout();
         layout->setSpacing(0);
         TitleBar *bar = new TitleBar(window, QStringLiteral("我是一个标题栏"));
         layout->addWidget(bar);

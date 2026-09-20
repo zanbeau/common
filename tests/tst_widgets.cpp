@@ -48,6 +48,7 @@ private slots:
     void framelessMove();
     void framelessResize();
     void framelessDoubleClick();
+    void framelessShadow();
     void theme();
     void iconButton();
     void themeAccent();
@@ -458,6 +459,56 @@ void TstWidgets::framelessDoubleClick()
     QVERIFY(!w.isMaximized());
 }
 
+void TstWidgets::framelessShadow()
+{
+    FramelessWidget w;
+    QVERIFY(w.testAttribute(Qt::WA_TranslucentBackground));
+    QVERIFY(w.contentWidget() && w.contentWidget()->parentWidget() == &w);
+    QVERIFY(w.contentLayout());
+    QCOMPARE(w.contentLayout()->contentsMargins(), QMargins(0, 0, 0, 0));
+    QVERIFY(w.shadowEnabled());
+    QCOMPARE(w.shadowMargin(), 12);
+    QCOMPARE(w.resizeMargin(), 5);  // 拉伸判定不受阴影影响
+
+    // 显示后内容内缩一个阴影环
+    w.resize(400, 300);
+    w.show();
+    QTRY_VERIFY(w.isVisible());
+    QCOMPARE(w.contentWidget()->geometry(), w.rect().adjusted(12, 12, -12, -12));
+
+    // 业务控件经 contentLayout 落位在内容容器里
+    QLabel label(QStringLiteral("内容"));
+    w.contentLayout()->addWidget(&label);
+    QTRY_VERIFY(label.isVisible());
+
+    // 最大化满铺方角,还原回到内缩圆角
+    w.showMaximized();
+    QTRY_COMPARE(w.contentWidget()->geometry(), w.rect());
+    w.showNormal();
+    QTRY_COMPARE(w.contentWidget()->geometry(), w.rect().adjusted(12, 12, -12, -12));
+
+    // 关阴影:内容铺满窗口
+    w.setShadowEnabled(false);
+    QVERIFY(!w.shadowEnabled());
+    QCOMPARE(w.contentWidget()->geometry(), w.rect());
+    w.setShadowEnabled(true);
+    QCOMPARE(w.contentWidget()->geometry(), w.rect().adjusted(12, 12, -12, -12));
+
+    // 绘制冒烟:阴影 + 圆角卡片路径可离屏渲染
+    QVERIFY(!w.grab().isNull());
+
+    // Dialog 同款行为
+    FramelessDialog dialog;
+    QVERIFY(dialog.testAttribute(Qt::WA_TranslucentBackground));
+    QVERIFY(dialog.contentWidget() && dialog.contentWidget()->parentWidget() == &dialog);
+    dialog.resize(360, 240);
+    dialog.show();
+    QTRY_VERIFY(dialog.isVisible());
+    QCOMPARE(dialog.contentWidget()->geometry(), dialog.rect().adjusted(12, 12, -12, -12));
+    dialog.showMaximized();
+    QTRY_COMPARE(dialog.contentWidget()->geometry(), dialog.rect());
+}
+
 void TstWidgets::theme()
 {
     Theme *theme = Theme::instance();
@@ -843,8 +894,7 @@ void TstWidgets::titleBar()
 {
     FramelessWidget window;
     window.resize(400, 300);
-    QVBoxLayout *windowLayout = new QVBoxLayout(&window);
-    windowLayout->setContentsMargins(0, 0, 0, 0);
+    QVBoxLayout *windowLayout = window.contentLayout();  // v0.12.0:布局挂内容容器
     windowLayout->setSpacing(0);
     TitleBar bar(&window, QStringLiteral("测试窗口"));
     windowLayout->addWidget(&bar);

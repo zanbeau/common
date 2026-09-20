@@ -74,11 +74,41 @@ int FramelessHandler::resizeMargin() const
     return m_resizeMargin;
 }
 
+void FramelessHandler::setClientWidget(QWidget *client)
+{
+    m_client = client;
+}
+
 Qt::Edges FramelessHandler::edgeAt(const QPoint &pos) const
 {
     if(m_target->isMaximized())
     {
         return {};
+    }
+
+    // 有客户区内缩(阴影环)时:整个环都是拉伸命中区,比 margin 更宽容;
+    // 无内缩时保持原行为——窗口边缘 m_resizeMargin 内命中
+    const QRect client = m_client ? m_client->geometry() : m_target->rect();
+    if(m_client && client != m_target->rect())
+    {
+        Qt::Edges edges;
+        if(pos.x() < client.left())
+        {
+            edges |= Qt::LeftEdge;
+        }
+        if(pos.x() > client.right())
+        {
+            edges |= Qt::RightEdge;
+        }
+        if(pos.y() < client.top())
+        {
+            edges |= Qt::TopEdge;
+        }
+        if(pos.y() > client.bottom())
+        {
+            edges |= Qt::BottomEdge;
+        }
+        return edges;
     }
 
     Qt::Edges edges;

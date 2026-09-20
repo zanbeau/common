@@ -224,17 +224,28 @@ connect(flow, &CoverFlow::currentChanged, this, &Browser::onCoverChanged);
 
 ### `FramelessWidget` — 无边框窗口基类
 
-八方向边缘拉伸(`setResizeMargin()`,默认 5px)对全窗口生效;**拖动与双击最大化只发生在标题栏(watch 面板)上**——内容区(控制栏、列表空白处等)的按下不认领也不拖动窗口。优先走窗口系统 `startSystemMove`/`startSystemResize`(原生贴边、Wayland 兼容),不支持时回退手动实现。
+v0.12.0 起自带**四周阴影 + 圆角卡片**外观(FramelessShadow,全平台一致):业务布局挂在 `contentLayout()` 上,内容自动内缩一个阴影环(12px);最大化/全屏自动满铺方角,还原即回圆角;`setShadowEnabled(false)` 关阴影(内容铺满,圆角仍在)。八方向边缘拉伸(`setResizeMargin()`,默认 5px)的命中区 = 阴影环;**拖动与双击最大化只发生在标题栏(watch 面板)上**——内容区的按下不认领也不拖动窗口。优先走窗口系统 `startSystemMove`/`startSystemResize`(原生贴边、Wayland 兼容),不支持时回退手动实现。
 
-窗口要能拖动,摆放 `TitleBar`(或对自拼面板调用 `FramelessHandler::watch()`)即可。
+```cpp
+PlayerWindow : FramelessWidget { ...
+    QVBoxLayout *root = contentLayout();   // 布局挂内容容器,别 new 到窗口上
+    root->addWidget(new TitleBar(this, "播放器"));
+}
+```
+
+窗口要能拖动,摆放 `TitleBar`(或对自拼面板调用 `FramelessHandler::watch()`)即可。注意:自带不透明底色且铺满到内容边缘的面板会把所在角的圆角盖成方角——让面板背景透明(窗口卡片供底)或避开四角 8px;自拼深色标题栏需自带 `border-top-*-radius`。
+
+### `FramelessShadow` — 阴影与圆角外观
+
+FramelessWidget/FramelessDialog 的外观本体:内容容器 + 渐变阴影(四角径向、四边线性,无缝)+ 圆角卡片(底色与描边取自 Theme,亮暗与强调色联动;阴影恒为半透明黑——效果参数不进语义色板)。窗口类通过 `contentWidget()/contentLayout()/setShadowEnabled()/shadowMargin()` 透出其能力;一般不单独使用。
 
 ### `FramelessDialog` — 无边框对话框基类
 
-与 FramelessWidget 完全同一套行为,基类是 QDialog,供"关于/确认/设置"弹窗用;标题栏内容由使用方摆放。
+与 FramelessWidget 完全同一套行为与阴影/圆角外观,基类是 QDialog,供"关于/确认/设置"弹窗用;业务布局同样挂 `contentLayout()`,标题栏内容由使用方摆放。
 
 ### `FramelessHandler` — 无边框行为复用
 
-上述两个类的行为本体(事件过滤器)。窗口本体只处理边缘拉伸;`watch(panel)` 把面板(标题栏)纳入拖动/双击最大化体系。任何顶层窗口都能挂:
+上述两个类的行为本体(事件过滤器)。窗口本体只处理边缘拉伸(设了 `setClientWidget()` 后命中区为内容内缩环);`watch(panel)` 把面板(标题栏)纳入拖动/双击最大化体系。任何顶层窗口都能挂:
 
 ```cpp
 // 让任意 QWidget 窗口获得 边缘拉伸 + 面板拖动
