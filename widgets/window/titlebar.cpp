@@ -175,7 +175,7 @@ TitleBar::TitleBar(QWidget *window, const QString &title)
     layout->addWidget(m_maxButton);
     layout->addWidget(m_closeButton);
 
-    connect(Theme::instance(), &Theme::modeChanged, this, [this]() { update(); });
+    connect(Theme::instance(), &Theme::themeChanged, this, [this]() { update(); });
 }
 
 void TitleBar::setTitle(const QString &title)

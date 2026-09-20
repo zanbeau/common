@@ -32,6 +32,8 @@ add_executable(widgets_demo WIN32
     pages/themepage.cpp
     pages/pushbuttonpage.h
     pages/pushbuttonpage.cpp
+    pages/iconbuttonpage.h
+    pages/iconbuttonpage.cpp
     pages/toggleswitchpage.h
     pages/toggleswitchpage.cpp
     pages/searchinputpage.h

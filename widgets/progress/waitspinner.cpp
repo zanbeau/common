@@ -16,7 +16,7 @@ WaitSpinner::WaitSpinner(QWidget *parent)
     connect(&m_angle, &QVariantAnimation::valueChanged, this,
             QOverload<>::of(&QWidget::update));
     // 未设自定义色时跟随主题换色
-    connect(Theme::instance(), &Theme::modeChanged, this, [this]() {
+    connect(Theme::instance(), &Theme::themeChanged, this, [this]() {
         if(!m_customColor)
         {
             m_color = Theme::instance()->color(Theme::Role::Primary);

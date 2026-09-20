@@ -79,6 +79,21 @@ auto *del = new PushButton(QStringLiteral("删除"), PushButton::Type::Danger);
 connect(ok, &PushButton::clicked, ...);   // 信号同 QPushButton
 ```
 
+### `IconButton` — 图标按钮
+
+内置 21 个常用字形(播放/暂停/切歌、音量三态、循环/单曲/随机,以及加减/关闭/勾/箭头/更多/收藏),全部 QPainter 绘制、随主题换色,不需要图标字体或资源文件。悬浮/按下画淡色底;可 checkable(选中态主色淡底 + 主色图标);`setGlyph()` 运行时换图标:
+
+```cpp
+auto *play = new IconButton(IconButton::Glyph::Play);
+play->setIconSize(24);                       // 默认 16,按钮 32x32
+connect(play, &IconButton::clicked, this, [play]() {
+    play->setGlyph(play->glyph() == IconButton::Glyph::Play
+                       ? IconButton::Glyph::Pause : IconButton::Glyph::Play);   // 播放⇄暂停
+});
+```
+
+静音这类两态按钮用 checkable + `toggled` 换字形。`paintGlyph()` 是公开静态函数,其他自绘控件(菜单项、列表指示等)可复用同一套字形保持全局风格一致。
+
 ### `ToggleSwitch` — 开关
 
 点击或空格切换,滑块位移动效;`toggled(bool)` / `clicked()` 信号,`setChecked()` 同值静默:

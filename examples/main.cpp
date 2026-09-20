@@ -15,6 +15,7 @@
 #include "pages/waitspinnerpage.h"
 #include "pages/themepage.h"
 #include "pages/pushbuttonpage.h"
+#include "pages/iconbuttonpage.h"
 #include "pages/toggleswitchpage.h"
 #include "pages/searchinputpage.h"
 #include "pages/tipsliderpage.h"
@@ -52,6 +53,7 @@ int main(int argc, char *argv[])
     GalleryWindow window;
     window.addPage(QStringLiteral("主题与令牌"), new ThemePage);
     window.addPage(QStringLiteral("按钮"), new PushButtonPage);
+    window.addPage(QStringLiteral("图标按钮"), new IconButtonPage);
     window.addPage(QStringLiteral("开关"), new ToggleSwitchPage);
     window.addPage(QStringLiteral("搜索输入"), new SearchInputPage);
     window.addPage(QStringLiteral("悬停提示滑条"), new TipSliderPage);

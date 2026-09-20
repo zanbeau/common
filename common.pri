@@ -30,6 +30,7 @@ HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/core/base/duration.h \
            $$PWD/core/application/singleinstance.h \
            $$PWD/widgets/button/pushbutton.h \
+           $$PWD/widgets/button/iconbutton.h \
            $$PWD/widgets/button/toggleswitch.h \
            $$PWD/widgets/input/searchinput.h \
            $$PWD/widgets/label/clickedlabel.h \
@@ -56,6 +57,7 @@ HEADERS += $$PWD/core/base/singleton.h \
 SOURCES += $$PWD/core/base/logger.cpp \
            $$PWD/core/application/singleinstance.cpp \
            $$PWD/widgets/button/pushbutton.cpp \
+           $$PWD/widgets/button/iconbutton.cpp \
            $$PWD/widgets/button/toggleswitch.cpp \
            $$PWD/widgets/input/searchinput.cpp \
            $$PWD/widgets/label/clickedlabel.cpp \

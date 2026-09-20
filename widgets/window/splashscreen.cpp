@@ -18,7 +18,7 @@ SplashScreen::SplashScreen(const QPixmap &pixmap, QWidget *parent)
     setAttribute(Qt::WA_DeleteOnClose);
     setFixedSize(420, 280);
 
-    connect(Theme::instance(), &Theme::modeChanged, this, [this]() { update(); });
+    connect(Theme::instance(), &Theme::themeChanged, this, [this]() { update(); });
 }
 
 void SplashScreen::setPixmap(const QPixmap &pixmap)

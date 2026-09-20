@@ -1,9 +1,46 @@
 #include "theme.h"
 
 #include <QApplication>
+#include <QGuiApplication>
 #include <QPalette>
+#include <QSettings>
+
+#ifdef Q_OS_WIN
+#define NOMINMAX
+#include <windows.h>
+#include <cwchar>
+#include <QAbstractNativeEventFilter>
+#endif
 
 namespace {
+
+#ifdef Q_OS_WIN
+// 监听系统亮暗切换:Personalize\AppsUseLightTheme 变化时系统广播
+// WM_SETTINGCHANGE("ImmersiveColorSet"),这里转成 Theme 的跟随刷新
+class SystemThemeFilter : public QAbstractNativeEventFilter
+{
+public:
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    bool nativeEventFilter(const QByteArray &eventType, void *message, long *result) override
+#else
+    bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) override
+#endif
+    {
+        Q_UNUSED(result)
+        if(eventType == QByteArrayLiteral("windows_generic_MSG"))
+        {
+            const MSG *msg = static_cast<const MSG *>(message);
+            if(msg->message == WM_SETTINGCHANGE && msg->lParam
+               && wcscmp(reinterpret_cast<const wchar_t *>(msg->lParam), L"ImmersiveColorSet") == 0)
+            {
+                Theme::instance()->syncWithSystem();
+            }
+        }
+        return false;
+    }
+};
+SystemThemeFilter *g_systemThemeFilter = nullptr;
+#endif
 
 // 角色 -> 色板字段
 QColor resolve(const Tokens::Palette &pal, Theme::Role role)
@@ -52,20 +89,126 @@ Theme::Mode Theme::mode() const
 
 void Theme::setMode(Mode mode)
 {
+    // 手动选择优先:一旦显式 setMode,停止跟随系统
+    m_followSystem = false;
     if(m_mode == mode)
     {
         return;
     }
+    updateMode(mode);
+}
+
+void Theme::updateMode(Mode mode)
+{
     m_mode = mode;
     if(m_applied)
     {
         apply();
     }
     emit modeChanged(mode);
+    emit themeChanged();
+}
+
+QColor Theme::accent() const
+{
+    return m_accent;
+}
+
+void Theme::setAccent(const QColor &color)
+{
+    if(m_accent == color)
+    {
+        return;
+    }
+    m_accent = color;
+    if(m_applied)
+    {
+        apply();
+    }
+    emit themeChanged();
+}
+
+bool Theme::followSystem() const
+{
+    return m_followSystem;
+}
+
+void Theme::setFollowSystem(bool follow)
+{
+    if(m_followSystem == follow)
+    {
+        return;
+    }
+    m_followSystem = follow;
+#ifdef Q_OS_WIN
+    if(follow && !g_systemThemeFilter)
+    {
+        g_systemThemeFilter = new SystemThemeFilter;
+        qApp->installNativeEventFilter(g_systemThemeFilter);
+    }
+#endif
+    if(follow)
+    {
+        syncWithSystem();
+    }
+}
+
+Theme::Mode Theme::systemMode() const
+{
+#ifdef Q_OS_WIN
+    // 注册表 AppsUseLightTheme(0 = 系统暗色);键不存在按亮色处理
+    const QSettings settings(
+        QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"),
+        QSettings::NativeFormat);
+    return settings.value(QStringLiteral("AppsUseLightTheme"), 1).toInt() == 0
+               ? Mode::Dark
+               : Mode::Light;
+#else
+    // 退路:按应用调色板窗口底的明度判断(深色 GTK/QPA 主题)
+    return QGuiApplication::palette().color(QPalette::Window).lightness() < 128
+               ? Mode::Dark
+               : Mode::Light;
+#endif
+}
+
+void Theme::syncWithSystem()
+{
+    if(!m_followSystem)
+    {
+        return;
+    }
+    const Mode system = systemMode();
+    if(m_mode != system)
+    {
+        updateMode(system);
+    }
 }
 
 QColor Theme::color(Role role) const
 {
+    // 强调色覆盖:主色族四个角色由强调色推导(hover 提亮/按下加深,
+    // 暗色下提亮幅度更大),其余角色不受影响
+    if(m_accent.isValid())
+    {
+        switch(role)
+        {
+        case Role::Primary:
+            return m_accent;
+        case Role::PrimaryHover:
+            return m_mode == Mode::Dark ? m_accent.lighter(130) : m_accent.lighter(112);
+        case Role::PrimaryPressed:
+            return m_mode == Mode::Dark ? m_accent.darker(108) : m_accent.darker(112);
+        case Role::TextOnPrimary:
+        {
+            // 按相对亮度决定主色上的文字用深还是浅
+            const qreal luminance = 0.299 * m_accent.redF() + 0.587 * m_accent.greenF()
+                                  + 0.114 * m_accent.blueF();
+            return luminance > 0.65 ? QColor(0x1D, 0x21, 0x29) : QColor(Qt::white);
+        }
+        default:
+            break;
+        }
+    }
     return m_mode == Mode::Dark ? resolve(Tokens::kDarkPalette, role)
                                 : resolve(Tokens::kLightPalette, role);
 }

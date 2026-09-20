@@ -27,7 +27,7 @@ CoverFlow::CoverFlow(QWidget *parent)
     connect(&m_anim, &QVariantAnimation::valueChanged, this, [this](const QVariant &value) {
         setVisualPosition(value.toReal());
     });
-    connect(Theme::instance(), &Theme::modeChanged, this, [this]() { update(); });
+    connect(Theme::instance(), &Theme::themeChanged, this, [this]() { update(); });
 }
 
 void CoverFlow::addCover(const QPixmap &cover)

@@ -42,7 +42,7 @@ SearchInput::SearchInput(const QString &placeholder, QWidget *parent)
     connect(this, &SearchInput::returnPressed, this, [this]() {
         emit searchRequested(text());
     });
-    connect(Theme::instance(), &Theme::modeChanged, this, &SearchInput::refreshIcon);
+    connect(Theme::instance(), &Theme::themeChanged, this, &SearchInput::refreshIcon);
 }
 
 QAction *SearchInput::leadingAction() const

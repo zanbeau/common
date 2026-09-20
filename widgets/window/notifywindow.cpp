@@ -54,7 +54,7 @@ NotifyWindow::NotifyWindow(const QString &title, const QString &text)
     layout->addWidget(m_title);
     layout->addWidget(m_text);
 
-    connect(Theme::instance(), &Theme::modeChanged, this, [this]() { update(); });
+    connect(Theme::instance(), &Theme::themeChanged, this, [this]() { update(); });
 
     // 入场淡入;到点后淡出销毁
     m_fade = new QPropertyAnimation(this, "windowOpacity", this);

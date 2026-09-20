@@ -16,6 +16,7 @@
 #include "framelessdialog.h"
 #include "framelesshandler.h"
 #include "framelesswidget.h"
+#include "iconbutton.h"
 #include "marqueelabel.h"
 #include "messagebox.h"
 #include "notifywindow.h"
@@ -47,6 +48,8 @@ private slots:
     void framelessResize();
     void framelessDoubleClick();
     void theme();
+    void iconButton();
+    void themeAccent();
     void framelessDialog();
     void notifyWindow();
     void splashScreen();
@@ -446,6 +449,104 @@ void TstWidgets::theme()
     QCOMPARE(theme->radius(Tokens::Radius::MD), 6);
     QCOMPARE(theme->spacing(Tokens::Spacing::LG), 16);
     QCOMPARE(theme->fontPx(Tokens::FontSize::Body), 13);
+}
+
+void TstWidgets::iconButton()
+{
+    IconButton button(IconButton::Glyph::Play);
+    QCOMPARE(button.glyph(), IconButton::Glyph::Play);
+    QCOMPARE(button.sizeHint(), QSize(32, 32));
+
+    // 运行时换图标
+    button.setGlyph(IconButton::Glyph::Pause);
+    QCOMPARE(button.glyph(), IconButton::Glyph::Pause);
+
+    // 图标尺寸联动尺寸提示
+    button.setIconSize(24);
+    QCOMPARE(button.iconSize(), 24);
+    QCOMPARE(button.sizeHint(), QSize(40, 40));
+    button.setIconSize(16);
+
+    // 点击发出 clicked(状态机来自 QAbstractButton)
+    QSignalSpy spy(&button, &IconButton::clicked);
+    QTest::mouseClick(&button, Qt::LeftButton);
+    QCOMPARE(spy.count(), 1);
+
+    // checkable 选中态
+    button.setCheckable(true);
+    button.setChecked(true);
+    QVERIFY(button.isChecked());
+
+    // 全部字形都能完成一次自绘,且相邻字形的渲染结果不完全相同
+    // (若某个字形画歪成空/重复,这里会失败)
+    QImage previous;
+    for(int g = 0; g <= static_cast<int>(IconButton::Glyph::Heart); ++g)
+    {
+        IconButton sample(static_cast<IconButton::Glyph>(g));
+        sample.resize(sample.sizeHint());
+        const QImage image = sample.grab().toImage();
+        QVERIFY(!image.isNull());
+        if(g > 0)
+        {
+            QVERIFY(image != previous);
+        }
+        previous = image;
+    }
+
+    // 禁用态也能自绘
+    IconButton disabled(IconButton::Glyph::VolumeMute);
+    disabled.setEnabled(false);
+    QVERIFY(!disabled.grab().isNull());
+}
+
+void TstWidgets::themeAccent()
+{
+    Theme *theme = Theme::instance();
+    QCOMPARE(theme->mode(), Theme::Mode::Light);   // 上一用例(theme)收尾在亮色
+
+    // --- 强调色覆盖 ---
+    QSignalSpy changedSpy(theme, &Theme::themeChanged);
+    const QColor accent(0x7C, 0x3A, 0xED);
+    theme->setAccent(accent);
+    QCOMPARE(theme->accent(), accent);
+    QCOMPARE(theme->color(Theme::Role::Primary), accent);
+    QCOMPARE(changedSpy.count(), 1);
+
+    // 悬浮/按下由强调色推导,不等于强调色本身;暗色下主色族同样生效
+    QVERIFY(theme->color(Theme::Role::PrimaryHover) != accent);
+    QVERIFY(theme->color(Theme::Role::PrimaryPressed) != accent);
+    theme->setMode(Theme::Mode::Dark);
+    QCOMPARE(theme->color(Theme::Role::Primary), accent);
+    theme->setMode(Theme::Mode::Light);
+
+    // 已 apply() 过:全局 QSS 重新生成,包含强调色;themeChanged 广播
+    theme->apply();
+    theme->setAccent(QColor(0x00, 0xB4, 0x2A));
+    QVERIFY(qApp->styleSheet().contains(QStringLiteral("#00b42a")));
+    QVERIFY(changedSpy.count() >= 2);
+
+    // 无效色恢复内置色板
+    theme->setAccent(QColor());
+    QVERIFY(!theme->accent().isValid());
+    QCOMPARE(theme->color(Theme::Role::Primary), Tokens::kLightPalette.primary);
+
+    // --- 跟随系统 ---
+    // 开启后立即按系统设置同步(具体亮暗取决于测试机,只验证状态与联动)
+    theme->setFollowSystem(true);
+    QVERIFY(theme->followSystem());
+    // 手动 setMode 会关闭跟随
+    theme->setMode(Theme::Mode::Dark);
+    QVERIFY(!theme->followSystem());
+    QCOMPARE(theme->mode(), Theme::Mode::Dark);
+    theme->setFollowSystem(false);
+    QVERIFY(!theme->followSystem());
+    // 关闭状态下 syncWithSystem 是空操作
+    theme->syncWithSystem();
+    QCOMPARE(theme->mode(), Theme::Mode::Dark);
+
+    // 收尾:回亮色 + 清强调色,不影响后续用例
+    theme->setMode(Theme::Mode::Light);
+    theme->setAccent(QColor());
 }
 
 void TstWidgets::framelessDialog()

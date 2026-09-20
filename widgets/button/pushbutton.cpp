@@ -16,7 +16,7 @@ PushButton::PushButton(const QString &text, Type type, QWidget *parent)
 
     // 悬浮/按下由自绘呈现,需要进出场时主动重绘
     setAttribute(Qt::WA_Hover, true);
-    connect(Theme::instance(), &Theme::modeChanged, this, [this]() { update(); });
+    connect(Theme::instance(), &Theme::themeChanged, this, [this]() { update(); });
 }
 
 PushButton::PushButton(const QString &text, QWidget *parent)

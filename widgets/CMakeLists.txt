@@ -2,7 +2,7 @@
 # (源文件与类别 include 目录由 register.cmake 自动展开)
 include(register.cmake)
 
-canfan_register_widget(button pushbutton toggleswitch)
+canfan_register_widget(button pushbutton toggleswitch iconbutton)
 canfan_register_widget(input searchinput)
 canfan_register_widget(label clickedlabel marqueelabel toastlabel
                              transitionlabel rotatelabel)

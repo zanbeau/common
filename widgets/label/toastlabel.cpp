@@ -15,7 +15,7 @@ ToastLabel::ToastLabel(const QString &text, QWidget *parent)
     setMargin(12);
     setAttribute(Qt::WA_TransparentForMouseEvents); // 不遮挡下层控件的点击
     applyThemeStyle();
-    connect(Theme::instance(), &Theme::modeChanged, this, &ToastLabel::applyThemeStyle);
+    connect(Theme::instance(), &Theme::themeChanged, this, &ToastLabel::applyThemeStyle);
 
     m_effect = new QGraphicsOpacityEffect(this);
     m_effect->setOpacity(1.0);

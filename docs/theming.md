@@ -56,8 +56,8 @@ Theme::instance()->setMode(Theme::Mode::Dark); // 即时切换,所有吃令牌�
 ```cpp
 MyWidget::MyWidget(QWidget *parent) : QWidget(parent)
 {
-    // 主题切换时重绘
-    connect(Theme::instance(), &Theme::modeChanged, this, [this]() { update(); });
+    // 主题变化时重绘(模式切换与强调色覆盖都会触发)
+    connect(Theme::instance(), &Theme::themeChanged, this, [this]() { update(); });
 }
 
 void MyWidget::paintEvent(QPaintEvent *)
@@ -88,8 +88,27 @@ connect(toggle, &ToggleSwitch::toggled, this, [&](bool dark) {
 
 注意先 `setMode` 再 `apply`:`apply()` 之后 `setMode` 会立即重刷全局样式,顺序不影响结果,但启动时一次到位更干净。
 
+## 强调色与跟随系统
+
+```cpp
+// 覆盖主色族:Primary/PrimaryHover/PrimaryPressed/TextOnPrimary 四个角色
+// 改由该色推导,其余角色不变;已 apply() 时全局 QSS 与自绘控件即时联动
+Theme::instance()->setAccent(QColor(0x7C, 0x3A, 0xED));
+Theme::instance()->setAccent(QColor());        // 传无效色恢复内置色板
+
+// 跟随系统亮暗:开启即同步系统当前设置,系统再切换时实时跟随
+// (Windows 监听 WM_SETTINGCHANGE;其他平台在开启时与 syncWithSystem() 时检测)
+Theme::instance()->setFollowSystem(true);
+```
+
+- 悬浮/按下由强调色自动推导(亮色 hover 提亮/press 加深,暗色提亮幅度更大);
+  `TextOnPrimary` 按强调色亮度自动取深/浅
+- 手动 `setMode()` 会关闭跟随(用户显式选择优先);再次 `setFollowSystem(true)` 恢复
+- 信号:`themeChanged()` 在模式切换**和**强调色变化后都发出——自绘控件连接它重绘即可
+  两种变化都跟随;`modeChanged(Mode)` 仍只在模式翻转时发出,供应用侧记录亮暗状态
+
 ## 扩展指南
 
 - **新增语义角色**:在 `Theme::Role` 加枚举 → `Tokens::Palette` 加字段并补进两套色板 → `theme.cpp` 的 `resolve()` 加一行
-- **换品牌色**:改 `Tokens::kLightPalette/kDarkPalette` 的 `primary*` 三个字段;主色相关的悬浮/按下态、选中项、焦点边框都会跟着走
+- **换品牌色**:改 `Tokens::kLightPalette/kDarkPalette` 的 `primary*` 三个字段,或运行时 `setAccent()` 覆盖;主色相关的悬浮/按下态、选中项、焦点边框都会跟着走
 - **扩大 QSS 覆盖**:在 `Theme::styleSheet()` 里追加选择器;新控件如果 QSS 能表达就优先用全局 QSS,表达不了(需要动画/复杂态)才走自绘

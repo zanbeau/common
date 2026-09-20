@@ -28,7 +28,7 @@ ToggleSwitch::ToggleSwitch(QWidget *parent)
     m_knob.setDuration(Theme::instance()->duration(Tokens::Duration::Fast));
     connect(&m_knob, &QVariantAnimation::valueChanged, this,
             QOverload<>::of(&QWidget::update));
-    connect(Theme::instance(), &Theme::modeChanged, this, [this]() { update(); });
+    connect(Theme::instance(), &Theme::themeChanged, this, [this]() { update(); });
 }
 
 bool ToggleSwitch::isChecked() const

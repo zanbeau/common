@@ -17,7 +17,7 @@
 | core | base | `singleton` / `logger` / `duration` |
 | core | application | `SingleInstance`(防双开) |
 | widgets | theme | `Tokens` / `Theme`(设计令牌 + 主题引擎) |
-| widgets | button | `PushButton` / `ToggleSwitch` |
+| widgets | button | `PushButton` / `IconButton` / `ToggleSwitch` |
 | widgets | input | `SearchInput` |
 | widgets | label | `ClickedLabel` / `MarqueeLabel` / `ToastLabel` / `TransitionLabel` / `RotateLabel` |
 | widgets | slider | `ClickedSlider` / `TipSlider` |
@@ -31,6 +31,7 @@
 QApplication app(argc, argv);
 Theme::instance()->apply();                      // 启动时应用主题(全局 QSS + QPalette)
 Theme::instance()->setMode(Theme::Mode::Dark);   // 即时切换,吃令牌的控件自动重绘
+// 可选:setAccent() 覆盖主色族(强调色),setFollowSystem() 跟随系统亮暗
 ```
 
 core 依赖 Qt::Core + Qt::Network(QLocalServer/QLocalSocket),使用方 `find_package(...)` 需包含 `Network` 组件;qmake 接入无需额外处理(common.pri 已加 `QT += network`)。

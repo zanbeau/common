@@ -21,6 +21,7 @@ HEADERS += gallerywindow.h \
            pages/toastpage.h \
            pages/themepage.h \
            pages/pushbuttonpage.h \
+           pages/iconbuttonpage.h \
            pages/toggleswitchpage.h \
            pages/searchinputpage.h \
            pages/tipsliderpage.h \
@@ -46,6 +47,7 @@ SOURCES += main.cpp \
            pages/toastpage.cpp \
            pages/themepage.cpp \
            pages/pushbuttonpage.cpp \
+           pages/iconbuttonpage.cpp \
            pages/toggleswitchpage.cpp \
            pages/searchinputpage.cpp \
            pages/tipsliderpage.cpp \
