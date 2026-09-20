@@ -5,9 +5,9 @@
 class FramelessHandler;
 
 // 无边框窗口基类(期待作为顶层窗口使用):
-//  - 按住客户区可拖动窗口
-//  - 靠近窗口边缘时按住可拉伸(八个方向)
-//  - 双击客户区最大化/还原
+//  - 窗口边缘按住可拉伸(八个方向)
+//  - 拖动与双击最大化只在 watch 的面板上(如 TitleBar;v0.10.0 起),
+//    内容区按下不认领——否则列表空白处/控件缝隙会误触发窗口拖动
 // 行为由 FramelessHandler 提供(优先窗口系统的 startSystemMove/Resize,
 // 不支持时回退手动实现),FramelessDialog 与此类共用同一套行为
 class FramelessWidget : public QWidget

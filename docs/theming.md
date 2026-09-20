@@ -41,11 +41,13 @@ Theme::instance()->setMode(Theme::Mode::Dark); // 即时切换,所有吃令牌�
 
 | 族 | API | 值 |
 |---|---|---|
-| 圆角 | `Theme::radius(Radius::SM/MD/LG)` | 4 / 6 / 8 px |
-| 间距 | `Theme::spacing(Spacing::XS..XL)` | 4 / 8 / 12 / 16 / 24 px |
-| 动效 | `Theme::duration(Duration::Fast/Normal/Slow)` | 150 / 250 / 400 ms |
-| 字号 | `Theme::fontPx(FontSize::Caption..Title)` | 12 / 13 / 14 / 16 / 20 px |
-| 控件高度 | `Theme::controlHeight(ControlHeight::SM/MD/LG)` | 28 / 32 / 36 px |
+| 圆角 | `Theme::radius(Tokens::Radius::SM/MD/LG)` | 4 / 6 / 8 px |
+| 间距 | `Theme::spacing(Tokens::Spacing::XS..XL)` | 4 / 8 / 12 / 16 / 24 px |
+| 动效 | `Theme::duration(Tokens::Duration::Fast/Normal/Slow)` | 150 / 250 / 400 ms |
+| 字号 | `Theme::fontPx(Tokens::FontSize::Caption..Title)` | 12 / 13 / 14 / 16 / 20 px |
+| 控件高度 | `Theme::controlHeight(Tokens::ControlHeight::SM/MD/LG)` | 28 / 32 / 36 px |
+
+另有 `Theme::mode()` 读取当前亮暗模式(不触发重刷)。
 
 ## 给自绘控件接入主题
 

@@ -9,6 +9,7 @@
 INCLUDEPATH += $$PWD/core \
                $$PWD/core/base \
                $$PWD/core/application \
+               $$PWD/widgets \
                $$PWD/widgets/button \
                $$PWD/widgets/input \
                $$PWD/widgets/label \
