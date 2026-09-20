@@ -43,6 +43,7 @@ private slots:
     void marqueeLabel();
     void waitSpinner();
     void animationStackedWidget();
+    void animationStackedFade();
     void framelessFlags();
     void framelessMove();
     void framelessResize();
@@ -250,6 +251,58 @@ void TstWidgets::animationStackedWidget()
     QVERIFY(stack.isAnimating());
     stack.setCurrentIndexAnimated(2);
     QCOMPARE(stack.currentIndex(), 1);
+
+    // 尺寸变化打断滑动:显式收尾后两页对齐(中途 stop 不发 finished)
+    stack.resize(320, 220);
+    QVERIFY(!stack.isAnimating());
+    QCOMPARE(stack.currentIndex(), 1);
+    QVERIFY(page1->isVisible());
+    QVERIFY(!page0->isVisible());
+    QCOMPARE(page0->pos(), QPoint(0, 0));
+}
+
+void TstWidgets::animationStackedFade()
+{
+    AnimationStackedWidget stack;
+    QLabel *page0 = new QLabel(QStringLiteral("0"));
+    QLabel *page1 = new QLabel(QStringLiteral("1"));
+    QLabel *page2 = new QLabel(QStringLiteral("2"));
+    stack.addWidget(page0);
+    stack.addWidget(page1);
+    stack.addWidget(page2);
+    stack.resize(300, 200);
+    stack.show();
+    QTRY_VERIFY(stack.isVisible());
+
+    // 默认滑动,向后兼容
+    QCOMPARE(stack.transition(), AnimationStackedWidget::Transition::Slide);
+    stack.setTransition(AnimationStackedWidget::Transition::Fade);
+    QCOMPARE(stack.transition(), AnimationStackedWidget::Transition::Fade);
+
+    stack.setDuration(100);
+    stack.setCurrentIndexAnimated(2);
+    QVERIFY(stack.isAnimating());
+    // 动画中两页都藏起,由容器绘制两页截图交叉淡化
+    QVERIFY(!page0->isVisible());
+    QVERIFY(!page2->isVisible());
+    QVERIFY(!stack.grab().isNull());
+    QTRY_VERIFY(!stack.isAnimating());
+    QCOMPARE(stack.currentIndex(), 2);
+    QVERIFY(page2->isVisible());
+    QVERIFY(!page0->isVisible());
+
+    // 动画期间的新请求被忽略
+    stack.setDuration(60000);
+    stack.setCurrentIndexAnimated(1);
+    QVERIFY(stack.isAnimating());
+    stack.setCurrentIndexAnimated(2);
+    QCOMPARE(stack.currentIndex(), 1);
+
+    // 尺寸变化打断淡入淡出:显式收尾,当前页恢复可见
+    stack.resize(320, 220);
+    QVERIFY(!stack.isAnimating());
+    QVERIFY(page1->isVisible());
+    QVERIFY(!page0->isVisible());
 }
 
 void TstWidgets::framelessFlags()

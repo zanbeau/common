@@ -1,5 +1,7 @@
 #include "animationstackedwidget.h"
 
+#include <QEasingCurve>
+#include <QPainter>
 #include <QResizeEvent>
 
 AnimationStackedWidget::AnimationStackedWidget(QWidget *parent)
@@ -13,16 +15,31 @@ AnimationStackedWidget::AnimationStackedWidget(QWidget *parent)
     m_group.addAnimation(&m_slideIn);
     connect(&m_group, &QParallelAnimationGroup::finished, this,
             &AnimationStackedWidget::finishAnimation);
+
+    m_fade.setStartValue(0.0);
+    m_fade.setEndValue(1.0);
+    m_fade.setEasingCurve(QEasingCurve::OutCubic);
+    connect(&m_fade, &QVariantAnimation::valueChanged, this, [this]() { update(); });
+    connect(&m_fade, &QVariantAnimation::finished, this, &AnimationStackedWidget::finishFade);
 }
 
 AnimationStackedWidget::~AnimationStackedWidget()
 {
-    // 析构期间动画组销毁链可能再触发 finished;先解除目标并断开回调,
-    // 避免回跳 finishAnimation 访问已销毁的成员/页面
+    // 析构期间动画销毁链可能再触发 finished;先解除目标并断开回调,
+    // 避免回跳 finishAnimation/finishFade 访问已销毁的成员/页面
     m_group.disconnect(this);
     m_group.stop();
+    m_fade.disconnect(this);
+    m_fade.stop();
     m_slideOut.setTargetObject(nullptr);
     m_slideIn.setTargetObject(nullptr);
+    m_fadeOld = QPixmap();
+    m_fadeNew = QPixmap();
+    // 淡入淡出中当前页是被藏起的,恢复可见交还 QStackedWidget 管理
+    if(currentWidget())
+    {
+        currentWidget()->show();
+    }
 }
 
 void AnimationStackedWidget::setDirection(Direction direction)
@@ -35,11 +52,22 @@ AnimationStackedWidget::Direction AnimationStackedWidget::direction() const
     return m_direction;
 }
 
+void AnimationStackedWidget::setTransition(Transition transition)
+{
+    m_transition = transition;
+}
+
+AnimationStackedWidget::Transition AnimationStackedWidget::transition() const
+{
+    return m_transition;
+}
+
 void AnimationStackedWidget::setDuration(int ms)
 {
     m_duration = (ms > 0) ? ms : 250;
     m_slideOut.setDuration(m_duration);
     m_slideIn.setDuration(m_duration);
+    m_fade.setDuration(m_duration);
 }
 
 int AnimationStackedWidget::duration() const
@@ -49,7 +77,8 @@ int AnimationStackedWidget::duration() const
 
 bool AnimationStackedWidget::isAnimating() const
 {
-    return m_group.state() == QAbstractAnimation::Running;
+    return m_group.state() == QAbstractAnimation::Running
+           || m_fade.state() == QAbstractAnimation::Running;
 }
 
 void AnimationStackedWidget::setCurrentIndexAnimated(int index)
@@ -62,8 +91,37 @@ void AnimationStackedWidget::setCurrentIndexAnimated(int index)
     // 先把当前页记下并切换,再手动把旧页显示出来参与动画
     QWidget *oldPage = currentWidget();
     const int oldIndex = currentIndex();
+    if(m_transition == Transition::Fade)
+    {
+        if(!oldPage)
+        {
+            return;
+        }
+        oldPage->resize(size());
+        m_fadeOld = oldPage->grab();
+        m_fadeNew = QPixmap();  // 清掉上一轮残留,防动画首帧画出旧图
+        setCurrentIndex(index);
+        QWidget *newPage = currentWidget();
+        if(!newPage || m_fadeOld.isNull())
+        {
+            return;
+        }
+        newPage->resize(size());
+        m_fadeNew = newPage->grab();
+        if(m_fadeNew.isNull())
+        {
+            return;
+        }
+        // 两页都藏起:子控件永远画在容器自绘之上,动画期间由容器绘制两张截图
+        oldPage->hide();
+        newPage->hide();
+        m_fade.start();
+        return;
+    }
+
+    QWidget *newPage = nullptr;
     setCurrentIndex(index);
-    QWidget *newPage = currentWidget();
+    newPage = currentWidget();
     if(!oldPage || !newPage)
     {
         return;
@@ -110,12 +168,51 @@ void AnimationStackedWidget::finishAnimation()
     m_slideIn.setTargetObject(nullptr);
 }
 
+void AnimationStackedWidget::finishFade()
+{
+    m_fadeOld = QPixmap();
+    m_fadeNew = QPixmap();
+    // 当前页在淡入淡出期间是被藏起的,结束即恢复
+    if(QWidget *page = currentWidget())
+    {
+        if(!page->isVisible())
+        {
+            page->show();
+        }
+    }
+    update();
+}
+
+void AnimationStackedWidget::paintEvent(QPaintEvent *event)
+{
+    QStackedWidget::paintEvent(event);
+    if(m_fade.state() != QAbstractAnimation::Running || m_fadeNew.isNull())
+    {
+        return;
+    }
+    // 新页截图全程不透明打底,旧页截图按进度渐隐盖上——
+    // 对称的交叉淡化会在中段透出容器底色,打底可避免
+    QPainter painter(this);
+    painter.drawPixmap(0, 0, m_fadeNew);
+    const qreal t = m_fade.currentValue().toReal();
+    if(t < 1.0)
+    {
+        painter.setOpacity(1.0 - t);
+        painter.drawPixmap(0, 0, m_fadeOld);
+    }
+}
+
 void AnimationStackedWidget::resizeEvent(QResizeEvent *event)
 {
     QStackedWidget::resizeEvent(event);
+    // 中途停止的动画不会发出 finished(Qt 仅在自然到点时发),
+    // 必须显式收尾对齐两页;两个 finish 均幂等,重复调用无害
     if(isAnimating())
     {
-        m_group.stop();  // stop 会触发 finished -> finishAnimation 对齐两页
+        m_group.stop();
+        m_fade.stop();
+        finishAnimation();
+        finishFade();
     }
     if(currentWidget())
     {

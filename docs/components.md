@@ -177,7 +177,7 @@ slider->setFormatter([](int ms) { return formatLyricTime(ms); });  // 可选
 
 ### `AnimationStackedWidget`
 
-页面横向/纵向滑动切换动画的 QStackedWidget;`setCurrentIndexAnimated(i)`,动画期间的新请求被忽略。
+页面切换动画的 QStackedWidget:`setTransition()` 选滑动(`Transition::Slide`,默认,新页滑入旧页滑出,`setDirection()` 横纵可选)或淡入淡出(`Transition::Fade`,两页截图交叉淡化);`setCurrentIndexAnimated(i)` 触发切换,动画期间的新请求被忽略,切换中改变尺寸会立即收尾对齐两页。
 
 ### `SideNav` — 侧边导航
 
