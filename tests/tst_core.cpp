@@ -1,14 +1,109 @@
 #include <QtTest>
 
+#include <QtNetwork>
+
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QProcess>
 #include <QTemporaryDir>
 
 #include "duration.h"
+#include "httpfetch.h"
 #include "logger.h"
 #include "singleinstance.h"
 #include "singleton.h"
+
+// 本地迷你 HTTP 服务:应答固定状态码与响应体,记录最近一次请求头与 body。
+// 全程 127.0.0.1,不碰外网;silent 模式收下请求但不应答,供超时用例使用
+class MiniHttpServer : public QObject
+{
+public:
+    explicit MiniHttpServer(QObject *parent = nullptr)
+        : QObject(parent)
+    {
+        QObject::connect(&m_server, &QTcpServer::newConnection, this, [this]() {
+            QTcpSocket *socket = m_server.nextPendingConnection();
+            QObject::connect(socket, &QTcpSocket::readyRead, this, [this, socket]() {
+                m_pending[socket] += socket->readAll();
+                const int headerEnd = m_pending[socket].indexOf("\r\n\r\n");
+                if(headerEnd < 0)
+                {
+                    return;
+                }
+                const QByteArray head = m_pending[socket].left(headerEnd);
+                int contentLength = 0;
+                const QList<QByteArray> lines = head.split('\n');
+                for(const QByteArray &line : lines)
+                {
+                    // QByteArray::startsWith 没有 Qt::CaseInsensitive 重载,先转小写再比
+                    if(line.trimmed().toLower().startsWith("content-length:"))
+                    {
+                        contentLength = line.mid(15).trimmed().toInt();
+                    }
+                }
+                if(m_pending[socket].size() < headerEnd + 4 + contentLength)
+                {
+                    return;  // body 还没收完
+                }
+                m_lastRequestHead = head;
+                m_lastBody = m_pending[socket].mid(headerEnd + 4, contentLength);
+                m_pending.remove(socket);
+                if(m_silent)
+                {
+                    return;  // 收下但不应答,耗到调用方超时
+                }
+                if(m_junk)
+                {
+                    socket->write("this is not http\r\n\r\n");
+                    socket->flush();
+                    socket->disconnectFromHost();
+                    return;
+                }
+                const QByteArray payload = QByteArray("HTTP/1.0 ")
+                    + QByteArray::number(m_status)
+                    + " OK\r\nContent-Type: text/plain\r\nContent-Length: "
+                    + QByteArray::number(m_fixedBody.size())
+                    + "\r\nConnection: close\r\n\r\n" + m_fixedBody;
+                socket->write(payload);
+                socket->flush();
+                socket->disconnectFromHost();
+            });
+            QObject::connect(socket, &QTcpSocket::disconnected,
+                             socket, &QTcpSocket::deleteLater);
+        });
+        m_server.listen(QHostAddress::LocalHost);
+    }
+
+    QUrl url(const QString &path = QStringLiteral("/")) const
+    {
+        return QUrl(QStringLiteral("http://127.0.0.1:%1%2")
+                        .arg(m_server.serverPort()).arg(path));
+    }
+
+    void respond(int status, const QByteArray &body)
+    {
+        m_status = status;
+        m_fixedBody = body;
+    }
+
+    void setSilent(bool silent) { m_silent = silent; }
+
+    // 应答非 HTTP 垃圾字节并断开:QNAM 立即报协议错,造快速可复现的 Error
+    void setJunk(bool junk) { m_junk = junk; }
+    QByteArray lastRequestHead() const { return m_lastRequestHead; }
+    QByteArray lastBody() const { return m_lastBody; }
+
+private:
+    QTcpServer m_server;
+    QHash<QTcpSocket *, QByteArray> m_pending;
+    QByteArray m_lastRequestHead;
+    QByteArray m_lastBody;
+    QByteArray m_fixedBody = QByteArrayLiteral("hello");
+    int m_status = 200;
+    bool m_silent = false;
+    bool m_junk = false;
+};
 
 class TstCore : public QObject
 {
@@ -18,6 +113,11 @@ private slots:
     void duration();
     void logger();
     void loggerLevel();
+    void httpFetchSync();
+    void httpFetchSyncLocal();
+    void httpFetchSyncTimeout();
+    void httpFetchAsync();
+    void httpFetchCancel();
     void singleInstance();
 };
 
@@ -154,6 +254,123 @@ void TstCore::loggerLevel()
     file2.close();
 }
 
+void TstCore::httpFetchSync()
+{
+    // 机制:UA 默认空(线上用内置 "canfan-common")、证书校验默认开启、初始空闲
+    HttpFetch fetcher;
+    QCOMPARE(fetcher.userAgent(), QString());
+    QVERIFY(!fetcher.insecureMode());
+    QVERIFY(!fetcher.isBusy());
+
+    // 垃圾应答 -> 立即 Error,与超时/空 body 可区分
+    // (不用 127.0.0.1:1 造拒连:本机低端口拒连要数秒才到,会先撞上超时)
+    MiniHttpServer server;
+    server.setJunk(true);
+    const auto junk = HttpFetch::syncGet(server.url(), 3000);
+    QVERIFY(!junk.ok());
+    QCOMPARE(junk.status, HttpFetch::Result::Status::Error);
+    QVERIFY(!junk.error.isEmpty());
+    QVERIFY(junk.body.isEmpty());
+}
+
+void TstCore::httpFetchSyncLocal()
+{
+    MiniHttpServer server;
+    server.respond(200, QByteArrayLiteral("hello"));
+
+    const auto ok = HttpFetch::syncGet(server.url(), 3000);
+    QVERIFY(ok.ok());
+    QCOMPARE(ok.status, HttpFetch::Result::Status::Success);
+    QCOMPARE(ok.body, QByteArrayLiteral("hello"));
+    QCOMPARE(ok.httpStatus, 200);
+    QVERIFY(server.lastRequestHead().contains("canfan-common")); // 内置 UA 已生效
+
+    // HTTP 404 -> Error,错误串带状态码可读
+    server.respond(404, QByteArrayLiteral("nope"));
+    const auto missing = HttpFetch::syncGet(server.url(QStringLiteral("/missing")), 3000);
+    QVERIFY(!missing.ok());
+    QCOMPARE(missing.httpStatus, 404);
+    QVERIFY(missing.error.contains(QStringLiteral("404")));
+
+    // POST:body 与默认表单类型都已送达
+    server.respond(200, QByteArrayLiteral("echo-back"));
+    const auto posted =
+        HttpFetch::syncPost(server.url(QStringLiteral("/submit")),
+                            QByteArrayLiteral("a=1&b=2"), 3000);
+    QVERIFY(posted.ok());
+    QCOMPARE(server.lastBody(), QByteArrayLiteral("a=1&b=2"));
+
+    // 同步下载:写入文件并覆盖已有内容
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("cover.bin"));
+    {
+        QFile pre(path);
+        QVERIFY(pre.open(QIODevice::WriteOnly));
+        pre.write("old");
+    }
+    server.respond(200, QByteArrayLiteral("new-bytes"));
+    const auto downloaded =
+        HttpFetch::syncDownload(server.url(QStringLiteral("/cover")), path, 3000);
+    QVERIFY(downloaded.ok());
+    QFile check(path);
+    QVERIFY(check.open(QIODevice::ReadOnly));
+    QCOMPARE(check.readAll(), QByteArrayLiteral("new-bytes"));
+}
+
+void TstCore::httpFetchSyncTimeout()
+{
+    MiniHttpServer server;   // silent:不应答
+    server.setSilent(true);
+
+    QElapsedTimer clock;
+    clock.start();
+    const auto timeout = HttpFetch::syncGet(server.url(), 300);
+    QVERIFY(!timeout.ok());
+    QCOMPARE(timeout.status, HttpFetch::Result::Status::Timeout);
+    QVERIFY(!timeout.error.isEmpty());
+    QVERIFY(clock.elapsed() < 5000);  // 到点即返,不能真耗到网络层超时
+}
+
+void TstCore::httpFetchAsync()
+{
+    HttpFetch fetcher;
+    QSignalSpy failedSpy(&fetcher, &HttpFetch::failed);
+    QSignalSpy finishedSpy(&fetcher, &HttpFetch::finished);
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("partial.bin"));
+
+    // 下载到拒连地址:failed、无 finished、不留半截文件
+    fetcher.download(QUrl(QStringLiteral("http://127.0.0.1:1/x")), path);
+    QVERIFY(fetcher.isBusy());
+    QTRY_COMPARE(failedSpy.count(), 1);
+    QCOMPARE(finishedSpy.count(), 0);
+    QVERIFY(!fetcher.isBusy());
+    QVERIFY(!QFile::exists(path));
+
+    // 忙时新请求被忽略
+    QVERIFY(failedSpy.count() >= 1);
+    const int before = failedSpy.count();
+    fetcher.get(QUrl(QStringLiteral("http://127.0.0.1:1/x")));
+    fetcher.get(QUrl(QStringLiteral("http://127.0.0.1:1/y")));
+    QTRY_COMPARE(failedSpy.count(), before + 1);
+}
+
+void TstCore::httpFetchCancel()
+{
+    MiniHttpServer server;
+    server.setSilent(true);
+    HttpFetch fetcher;
+    QSignalSpy failedSpy(&fetcher, &HttpFetch::failed);
+
+    fetcher.get(server.url());
+    QVERIFY(fetcher.isBusy());
+    fetcher.cancel();
+    QTRY_COMPARE(failedSpy.count(), 1);
+    QVERIFY(!fetcher.isBusy());
+}
+
 void TstCore::singleInstance()
 {
     const QString key = QStringLiteral("tst-single-") + QString::number(QCoreApplication::applicationPid());
@@ -181,6 +398,8 @@ void TstCore::singleInstance()
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
+    // 本机若配了系统代理会劫持 127.0.0.1 的 HTTP 测试请求,测试进程一律直连
+    QNetworkProxy::setApplicationProxy(QNetworkProxy::NoProxy);
     const QStringList args = app.arguments();
     if(args.size() >= 3 && args.at(2) == QStringLiteral("--secondary"))
     {

@@ -1,4 +1,6 @@
 add_library(core STATIC
+    application/httpfetch.h
+    application/httpfetch.cpp
     application/singleinstance.h
     application/singleinstance.cpp
     base/duration.h

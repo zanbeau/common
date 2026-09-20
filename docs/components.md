@@ -66,6 +66,28 @@ QObject::connect(&guard, &SingleInstance::messageReceived, &window, [&window]() 
 
 主实例需保持事件循环响应。依赖 Qt::Network(QLocalServer/QLocalSocket)。
 
+### `HttpFetch` — HTTP 拉取
+
+异步 get/post/download + 同步便捷函数,面向封面/歌词/在线检索这类"取回内容"的场景
+(TTKAbstractNetwork/TTKEventLoop 的改良版:同步超时会真的 abort 请求、结果区分
+成功/超时/错误、默认保持 SSL 校验、重定向跟随到最终地址):
+
+```cpp
+// 异步:信号回调,适合界面拉封面
+auto *fetch = new HttpFetch(this);
+connect(fetch, &HttpFetch::finished, this, &NowPlaying::onCoverLoaded);
+connect(fetch, &HttpFetch::failed, this, [](const QString &err) { ... });
+fetch->get(QUrl("https://example.com/cover/123"));
+fetch->download(QUrl("https://example.com/lyrics/1"), "lyrics/1.lrc");  // 原子落盘
+
+// 同步:内部事件循环,到点 abort 并返回 Timeout,适合初始化期一次性的拉取
+const auto result = HttpFetch::syncGet(QUrl("https://api.example.com/search?q=x"));
+if(result.ok()) { use(result.body); }        // result.httpStatus / result.error
+```
+
+同一对象同时只跑一个请求,忙时新请求被忽略;异步请求无内建超时,用 `cancel()`
+中止。内网自签可 `setInsecureMode(true)` 显式关证书校验(同步函数不受影响)。
+
 ## widgets/theme
 
 见 [theming.md](theming.md)。`Tokens` 为设计变量常量,`Theme::instance()` 为解析引擎(`color(Role)` / `apply()` / `setMode()`)。

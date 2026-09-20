@@ -28,6 +28,7 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00
 HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/core/base/logger.h \
            $$PWD/core/base/duration.h \
+           $$PWD/core/application/httpfetch.h \
            $$PWD/core/application/singleinstance.h \
            $$PWD/widgets/button/pushbutton.h \
            $$PWD/widgets/button/iconbutton.h \
@@ -55,6 +56,7 @@ HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/widgets/window/titlebar.h
 
 SOURCES += $$PWD/core/base/logger.cpp \
+           $$PWD/core/application/httpfetch.cpp \
            $$PWD/core/application/singleinstance.cpp \
            $$PWD/widgets/button/pushbutton.cpp \
            $$PWD/widgets/button/iconbutton.cpp \

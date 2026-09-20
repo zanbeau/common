@@ -15,7 +15,7 @@
 | 层 | 类别 | 组件 |
 |---|---|---|
 | core | base | `singleton` / `logger` / `duration` |
-| core | application | `SingleInstance`(防双开) |
+| core | application | `SingleInstance`(防双开) / `HttpFetch`(HTTP 拉取) |
 | widgets | theme | `Tokens` / `Theme`(设计令牌 + 主题引擎) |
 | widgets | button | `PushButton` / `IconButton` / `ToggleSwitch` |
 | widgets | input | `SearchInput` |
