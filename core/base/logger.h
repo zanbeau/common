@@ -29,6 +29,15 @@ void setMaxSize(qint64 size);
 // 日志文件保质期(天),默认 7 天(借自 TTK 的 expire)
 void setExpireDays(int days);
 
+// 运行时级别过滤:低于 level 的消息直接丢弃——流式 API 与 Qt 消息管线两处都拦,
+// 即 Qt 自身的 qDebug/qWarning 的镜像与控制台输出同样被过滤。
+// 默认 Trace = 全部放行。Fatal 永远放行:qFatal 在 Qt 侧提交后必然中止程序,
+// 过滤它只会丢掉临终日志
+void setLevel(Level level);
+
+// 当前过滤级别
+Level level();
+
 } // namespace Log
 
 // 流式日志临时对象:析构时按级别提交到 Qt 消息管线。

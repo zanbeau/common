@@ -17,6 +17,7 @@ private slots:
     void singleton();
     void duration();
     void logger();
+    void loggerLevel();
     void singleInstance();
 };
 
@@ -108,6 +109,49 @@ void TstCore::logger()
     // 恢复默认,避免影响其他用例
     Log::setMaxSize(5 * 1024 * 1024);
     Log::setExpireDays(7);
+}
+
+void TstCore::loggerLevel()
+{
+    // Fatal 不测:qFatal 提交后程序中止,进不了断言
+    QCOMPARE(Log::level(), Log::Level::Trace); // 默认全放行
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QVERIFY(Log::setFile(dir.filePath(QStringLiteral("lvl.log"))));
+    Log::setLevel(Log::Level::Warning);
+
+    // 三条应被过滤:流式 API 两条 + Qt 自身 qDebug 一条(处理器同样拦截)
+    Log::info() << "dropped-info";
+    LOG_DEBUG << "dropped-debug";
+    qDebug("%s", "dropped-qdebug");
+    // 两条应保留
+    LOG_WARNING << "kept-warn";
+    Log::error() << "kept-error";
+
+    QVERIFY(Log::setFile(QString())); // 关闭文件后才能读取(Windows 文件占用)
+    QDir outDir(dir.path());
+    const auto files = outDir.entryList(QStringList(QStringLiteral("lvl_*.log")), QDir::Files);
+    QCOMPARE(files.size(), 1);
+    QFile file(outDir.filePath(files.first()));
+    QVERIFY(file.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString content = QString::fromUtf8(file.readAll());
+    file.close();
+
+    QVERIFY(!content.contains(QStringLiteral("dropped")));
+    QVERIFY(content.contains(QStringLiteral("kept-warn")));
+    QVERIFY(content.contains(QStringLiteral("kept-error")));
+
+    // 恢复全放行后 trace 重新可见
+    Log::setLevel(Log::Level::Trace);
+    QCOMPARE(Log::level(), Log::Level::Trace);
+    QVERIFY(Log::setFile(dir.filePath(QStringLiteral("lvl.log"))));
+    LOG_TRACE << "kept-trace";
+    QVERIFY(Log::setFile(QString()));
+    QFile file2(outDir.filePath(files.first()));
+    QVERIFY(file2.open(QIODevice::ReadOnly | QIODevice::Text));
+    QVERIFY(QString::fromUtf8(file2.readAll()).contains(QStringLiteral("kept-trace")));
+    file2.close();
 }
 
 void TstCore::singleInstance()

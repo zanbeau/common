@@ -7,6 +7,8 @@
 #include <QMutex>
 #include <QLoggingCategory>
 
+#include <atomic>
+
 namespace {
 
 // trace 级别走独立 category:Qt 消息管线只有 5 个类型,
@@ -16,6 +18,10 @@ Q_LOGGING_CATEGORY(lcTrace, "canfan.trace")
 QMutex g_mutex;
 QFile g_file;
 QtMessageHandler g_previous = nullptr;
+
+// 级别过滤用原子量而非 g_mutex:LogStream 每条日志析构都要过这道闸,
+// messageHandler 又已持有 g_mutex,无锁 gate 避免锁开销与递归加锁
+std::atomic<Log::Level> g_level{ Log::Level::Trace };
 
 // 自家转发的消息 context 也指向 logger.cpp,用来和真正的调用方 context 区分
 const char g_selfFile[] = __FILE__;
@@ -92,8 +98,33 @@ void removeExpiredLocked()
     }
 }
 
+// Qt 消息类型 + trace category -> 自家级别(levelName 的反查版,供级别过滤用)
+Log::Level messageLevel(QtMsgType type, const QMessageLogContext &context)
+{
+    if(type == QtDebugMsg && context.category && qstrcmp(context.category, "canfan.trace") == 0)
+    {
+        return Log::Level::Trace;
+    }
+    switch(type)
+    {
+        case QtDebugMsg:    return Log::Level::Debug;
+        case QtInfoMsg:     return Log::Level::Info;
+        case QtWarningMsg:  return Log::Level::Warning;
+        case QtCriticalMsg: return Log::Level::Error;
+        case QtFatalMsg:    return Log::Level::Fatal;
+    }
+    return Log::Level::Info;
+}
+
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &message)
 {
+    // 级别过滤在取锁之前:被丢弃的消息不该有任何成本。
+    // Fatal 恒放行(qFatal 提交后 Qt 必然中止,拦了只会丢临终日志)
+    const Log::Level lvl = messageLevel(type, context);
+    if(lvl < g_level.load(std::memory_order_relaxed) && lvl != Log::Level::Fatal)
+    {
+        return;
+    }
     QMutexLocker lock(&g_mutex);
     if(g_file.isOpen())
     {
@@ -135,6 +166,11 @@ LogStream::LogStream(Log::Level level, const char *file, int line)
 
 LogStream::~LogStream()
 {
+    // 低于过滤级别的消息直接丢弃;Fatal 恒放行(与 messageHandler 同一语义)
+    if(m_level < g_level.load(std::memory_order_relaxed) && m_level != Log::Level::Fatal)
+    {
+        return;
+    }
     m_stream.flush();
     QString text = m_buffer;
     if(!m_file.isEmpty())
@@ -200,6 +236,16 @@ void setExpireDays(int days)
 {
     QMutexLocker lock(&g_mutex);
     g_expireDays = days;
+}
+
+void setLevel(Level level)
+{
+    g_level.store(level, std::memory_order_relaxed);
+}
+
+Level level()
+{
+    return g_level.load(std::memory_order_relaxed);
 }
 
 } // namespace Log

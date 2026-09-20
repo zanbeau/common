@@ -27,6 +27,9 @@ Log::setFile("logs/app.log");  // 之后所有日志(含 Qt 自身 qDebug 等)�
                                // 实际文件 logs/app_<日期>_<序号>.log:跨天或单文件
                                // 超过 5MB(Log::setMaxSize)滚动到新文件;打开时清理
                                // 7 天前(Log::setExpireDays)同基准名的旧 .log
+Log::setLevel(Log::Level::Warning); // 运行时级别过滤:低于级别的消息直接丢弃
+                                    // (流式 API 与 Qt 自身消息两处都拦);默认 Trace
+                                    // 全放行,Fatal 恒放行(qFatal 后程序必然中止)
 ```
 
 级别:`trace/debug/info/warning/error/fatal`(借自 TTK 的六级划分;fatal 走 qFatal
