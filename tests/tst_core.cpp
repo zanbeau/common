@@ -1,5 +1,6 @@
 #include <QtTest>
 
+#include <QDir>
 #include <QFile>
 #include <QProcess>
 #include <QTemporaryDir>
@@ -7,15 +8,30 @@
 #include "duration.h"
 #include "logger.h"
 #include "singleinstance.h"
+#include "singleton.h"
 
 class TstCore : public QObject
 {
     Q_OBJECT
 private slots:
+    void singleton();
     void duration();
     void logger();
     void singleInstance();
 };
+
+// CRTP 单例:同一类型两次取址相同,状态共享;不同类型实例互不相干
+void TstCore::singleton()
+{
+    struct A : public Singleton<A> { int value = 0; };
+    struct B : public Singleton<B> { int value = 0; };
+
+    A::instance()->value = 42;
+    QCOMPARE(A::instance(), A::instance());
+    QCOMPARE(A::instance()->value, 42);
+    QCOMPARE(B::instance()->value, 0);
+    QVERIFY(static_cast<void *>(A::instance()) != static_cast<void *>(B::instance()));
+}
 
 void TstCore::duration()
 {
@@ -42,22 +58,56 @@ void TstCore::duration()
 
 void TstCore::logger()
 {
+    // 基础流式 + 宏调用点 + 节流:镜像文件为 <基准名>_<日期>_<序号>.log
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
-    const QString path = dir.filePath(QStringLiteral("log.txt"));
-    QVERIFY(Log::setFile(path));
+    QVERIFY(Log::setFile(dir.filePath(QStringLiteral("app.log"))));
 
+    LOG_TRACE << "trace text";
     Log::info() << "hello" << 42;
-    Log::warning() << "warn text";
+    LOG_WARNING << "warn text" << 7;
+    for(int i = 0; i < 2; ++i)
+    {
+        LOG_INFO_ONCE("once text"); // ONCE 按调用点节流:同一展开点第二次循环被拦截
+    }
     QVERIFY(Log::setFile(QString())); // 关闭文件后才能读取(Windows 文件占用)
 
-    QFile file(path);
+    QDir outDir(dir.path());
+    QVERIFY(outDir.entryList(QStringList(QStringLiteral("app_*.log")), QDir::Files).size() == 1);
+    QFile file(outDir.filePath(outDir.entryList(QStringList(QStringLiteral("app_*.log")), QDir::Files).first()));
     QVERIFY(file.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString content = QString::fromUtf8(file.readAll());
+    file.close();
+
     QVERIFY(content.contains(QStringLiteral("hello 42")));
     QVERIFY(content.contains(QStringLiteral("INFO")));
-    QVERIFY(content.contains(QStringLiteral("warn text")));
+    QVERIFY(content.contains(QStringLiteral("trace text")));
+    QVERIFY(content.contains(QStringLiteral("TRACE")));
+    QVERIFY(content.contains(QStringLiteral("warn text 7")));
     QVERIFY(content.contains(QStringLiteral("WARN")));
+    QVERIFY(content.contains(QStringLiteral("tst_core.cpp"))); // 宏捕获的调用点文件名
+    QVERIFY(content.count(QStringLiteral("once text")) == 1);  // ONCE 只打一次
+
+    // 轮转:maxSize=1 时每条消息都滚动到新序号文件
+    QTemporaryDir dir2;
+    QVERIFY(dir2.isValid());
+    Log::setMaxSize(1);
+    QVERIFY(Log::setFile(dir2.filePath(QStringLiteral("roll.log"))));
+    Log::info() << "first";
+    Log::info() << "second";
+    QVERIFY(Log::setFile(QString()));
+    QVERIFY(QDir(dir2.path()).entryList(QStringList(QStringLiteral("roll_*.log")), QDir::Files).size() == 2);
+
+    // 过期清理:expire=0 时重开即清空旧滚动文件,只留新打开的一个
+    Log::setExpireDays(0);
+    QTest::qWait(5); // 保证 now - 创建时间 > 0
+    QVERIFY(Log::setFile(dir2.filePath(QStringLiteral("roll.log"))));
+    QVERIFY(Log::setFile(QString()));
+    QVERIFY(QDir(dir2.path()).entryList(QStringList(QStringLiteral("roll_*.log")), QDir::Files).size() == 1);
+
+    // 恢复默认,避免影响其他用例
+    Log::setMaxSize(5 * 1024 * 1024);
+    Log::setExpireDays(7);
 }
 
 void TstCore::singleInstance()

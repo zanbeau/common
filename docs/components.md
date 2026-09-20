@@ -18,11 +18,23 @@ Manager::instance()->...;
 ### `logger` — 流式日志
 
 ```cpp
-Log::info() << "loaded" << n;
-Log::setFile("app.log");   // 之后所有日志(含 Qt 自身 qDebug 等)镜像写入文件
+Log::info() << "loaded" << n;            // 自由函数,不带调用点
+LOG_INFO << "loaded" << n;               // 宏,镜像文件里带 [文件名(行号)] 前缀
+LOG_INFO_ONCE("只打一次" << n);           // 节流族:_ONCE / _COND / _COUNT / _PERIOD
+LOG_WARNING_PERIOD(5, "至多 5 秒一条");    // 六个级别 × 四种节流,自由组合
+
+Log::setFile("logs/app.log");  // 之后所有日志(含 Qt 自身 qDebug 等)镜像写入。
+                               // 实际文件 logs/app_<日期>_<序号>.log:跨天或单文件
+                               // 超过 5MB(Log::setMaxSize)滚动到新文件;打开时清理
+                               // 7 天前(Log::setExpireDays)同基准名的旧 .log
 ```
 
-级别:`debug/info/warning/error`。状态全部藏在 .cpp,对外只有 `namespace Log` 的自由函数。
+级别:`trace/debug/info/warning/error/fatal`(借自 TTK 的六级划分;fatal 走 qFatal
+语义,提交后程序中止)。trace 走独立 category,镜像文件里才能与 DEBUG 区分。宏在
+调用点捕获 `__FILE__`/`__LINE__`,流式参数用 `<<` 连接,顶层出现逗号需自行加括号
+(宏参数切分,与 TTK 相同的限制)。非宏消息(Qt 内部的 qWarning 等)从
+`QMessageLogContext` 补调用点。状态全部藏在 .cpp,对外只有 `namespace Log` 的自由
+函数 + `LOG_*` 宏。
 
 ### `duration.h` — 播放时长格式化
 
@@ -193,7 +205,7 @@ handler->watch(titleBar);   // 自拼面板;用 TitleBar 则它自己会挂
 
 ### `TitleBar` — 标题栏
 
-无边框窗口的标题栏:标题(左)+ 最小化/最大化/关闭(右),主题化绘制。本体对鼠标透明,按下即拖动、双击即最大化(事件穿透给 FramelessHandler),只有三个按钮自己响应点击;关闭时先发 `closeRequested()` 再关窗:
+无边框窗口的标题栏:标题(左)+ 最小化/最大化/关闭(右),主题化绘制。bar 内部自挂一个 watch 型 `FramelessHandler`,整条栏的按下被它认领——拖动、双击最大化都发生在栏上,三个按钮作为子控件各自消费自己的点击;关闭时先发 `closeRequested()` 再关窗。`setTitle()` 换标题,`setClosable()` 控制关闭按钮显隐:
 
 ```cpp
 auto *bar = new TitleBar(this, QStringLiteral("我的播放器"));
@@ -207,17 +219,20 @@ connect(bar, &TitleBar::closeRequested, this, &Player::onCloseRequested);
 
 ```cpp
 MessageBox::information(this, "提示", "已保存");
+MessageBox::warning(this, "警告", "文件未保存");
+MessageBox::critical(this, "错误", "无法打开文件");
 if(MessageBox::question(this, "删除", "确定移除这首歌吗?")) { ... }
 ```
 
-也可直接构造后自行 `exec()`/`show()`;Esc 与标题栏关闭按取消处理。
+四个静态入口对应 `Icon` 的 `Information/Warning/Critical/Question` 四种图标;直接构造时可传 `Icon::None` 不带图标,`setText()` 更新正文。也可构造后自行 `exec()`/`show()`;Esc 与标题栏关闭按取消处理。
 
 ### `NotifyWindow` — 桌面通知
 
-主屏右下角弹出,自动淡出销毁,多条自下而上堆叠,点击关闭:
+主屏右下角弹出,自动淡出销毁(`duration` 控制停留毫秒数,默认 3500),多条自下而上堆叠,点击任意处关闭:
 
 ```cpp
 NotifyWindow::showMessage(QStringLiteral("正在播放"), QStringLiteral("晴天 - 周杰伦"));
+// 想响应点击:showMessage 返回实例,连它的 clicked() 信号
 ```
 
 ### `SplashScreen` — 启动画面
