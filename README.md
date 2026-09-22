@@ -14,22 +14,24 @@
 
 | 层 | 类别 | 组件 |
 |---|---|---|
-| core | base | `singleton` / `logger` / `duration` |
+| core | base | `singleton` / `logger` / `duration` / `LrcParser`(LRC 歌词解析) |
 | core | application | `SingleInstance`(防双开) / `HttpFetch`(HTTP 拉取) |
 | widgets | theme | `Tokens` / `Theme`(设计令牌 + 主题引擎) |
 | widgets | button | `PushButton` / `IconButton` / `ToggleSwitch` |
 | widgets | input | `SearchInput` |
 | widgets | label | `ClickedLabel` / `MarqueeLabel` / `ToastLabel` / `TransitionLabel` / `RotateLabel` |
+| widgets | list | `PlaylistTable`(播放列表) |
 | widgets | slider | `ClickedSlider` / `TipSlider` |
 | widgets | progress | `WaitSpinner` |
-| widgets | widget | `AnimationStackedWidget` / `SideNav` / `CoverFlow` |
+| widgets | widget | `AnimationStackedWidget` / `SideNav` / `CoverFlow` / `LyricsView`(歌词) |
 | widgets | window | `FramelessWidget` / `FramelessDialog` / `FramelessHandler` / `FramelessShadow` / `TitleBar` / `MessageBox` / `NotifyWindow` / `SplashScreen` |
 
 主题三行起步:
 
 ```cpp
 QApplication app(argc, argv);
-Theme::instance()->apply();                      // 启动时应用主题(全局 QSS + QPalette)
+Theme::instance()->load();                       // 读回上次的亮暗/强调色,并开启变更即存
+Theme::instance()->apply();                      // 应用主题(全局 QSS + QPalette)
 Theme::instance()->setMode(Theme::Mode::Dark);   // 即时切换,吃令牌的控件自动重绘
 // 可选:setAccent() 覆盖主色族(强调色),setFollowSystem() 跟随系统亮暗
 ```
@@ -42,7 +44,7 @@ core 依赖 Qt::Core + Qt::Network(QLocalServer/QLocalSocket),使用方 `find_pa
 include(FetchContent)
 FetchContent_Declare(common
     GIT_REPOSITORY https://github.com/zanbeau/common.git
-    GIT_TAG        v0.12.0   # 建议锁定版本
+    GIT_TAG        v0.13.0   # 建议锁定版本
 )
 FetchContent_MakeAvailable(common)
 

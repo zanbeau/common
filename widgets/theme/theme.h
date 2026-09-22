@@ -82,6 +82,17 @@ public:
     // 应用到整个应用:qApp 样式表 + QPalette 同步;此后 setMode 会自动重新应用
     void apply();
 
+    // 状态持久化(组 "Theme"):消费端设置过组织名就存进它的 QSettings,
+    // 组织名为空时退到库自己的固定键 canfan/common(此时 QSettings 默认构造
+    // 在 Windows 上没有落盘位置,不兜底会静默丢数据):
+    //  - load()  读回 mode/accent/followSystem,并从此开启变更即落盘;
+    //            返回是否读到了已存状态(没有也照样开启记忆,首启即开始记录)
+    //  - save()  手动落盘一次(load() 之后的变更已自动保存,一般无需调用)
+    // 消费端只需启动时一句 Theme::instance()->load(),暗色/强调色/跟随系统
+    // 即跨启动记忆;不调 load() 则行为与从前完全一致(不读不写)
+    bool load();
+    void save();
+
 signals:
     void modeChanged(Theme::Mode mode);   // 仅模式翻转时发出
     void themeChanged();                  // 任何视觉色变化(模式切换/强调色覆盖)后发出;
@@ -92,9 +103,11 @@ private:
 
     Mode systemMode() const;              // 当前系统的亮暗(注册表/调色板启发)
     void updateMode(Mode mode);           // setMode/syncWithSystem 共用的落盘+广播
+    void persist();                       // load() 之后任何状态变化即自动落盘
 
     Mode m_mode = Mode::Light;
     bool m_applied = false;
     bool m_followSystem = false;
     QColor m_accent;                      // 无效 = 未覆盖
+    bool m_persist = false;               // load() 开启;未开启则零读写
 };

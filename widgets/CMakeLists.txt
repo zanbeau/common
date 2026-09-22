@@ -6,10 +6,12 @@ canfan_register_widget(button pushbutton toggleswitch iconbutton)
 canfan_register_widget(input searchinput)
 canfan_register_widget(label clickedlabel marqueelabel toastlabel
                              transitionlabel rotatelabel)
+canfan_register_widget(list playlisttable)
 canfan_register_widget(progress waitspinner)
 canfan_register_widget(slider clickedslider tipslider)
 canfan_register_widget(theme tokens theme)   # tokens 为纯头文件组件
-canfan_register_widget(widget animationstackedwidget sidenav coverflow)
+canfan_register_widget(widget animationstackedwidget sidenav coverflow
+                             lyricsview)
 canfan_register_widget(window framelesswidget framelesshandler framelessshadow
                              framelessdialog titlebar messagebox notifywindow
                              splashscreen)

@@ -13,6 +13,7 @@ INCLUDEPATH += $$PWD/core \
                $$PWD/widgets/button \
                $$PWD/widgets/input \
                $$PWD/widgets/label \
+               $$PWD/widgets/list \
                $$PWD/widgets/progress \
                $$PWD/widgets/slider \
                $$PWD/widgets/theme \
@@ -28,6 +29,7 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00
 HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/core/base/logger.h \
            $$PWD/core/base/duration.h \
+           $$PWD/core/base/lrcparser.h \
            $$PWD/core/application/httpfetch.h \
            $$PWD/core/application/singleinstance.h \
            $$PWD/widgets/button/pushbutton.h \
@@ -39,6 +41,7 @@ HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/widgets/label/toastlabel.h \
            $$PWD/widgets/label/transitionlabel.h \
            $$PWD/widgets/label/rotatelabel.h \
+           $$PWD/widgets/list/playlisttable.h \
            $$PWD/widgets/progress/waitspinner.h \
            $$PWD/widgets/slider/clickedslider.h \
            $$PWD/widgets/slider/tipslider.h \
@@ -47,6 +50,7 @@ HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/widgets/widget/animationstackedwidget.h \
            $$PWD/widgets/widget/sidenav.h \
            $$PWD/widgets/widget/coverflow.h \
+           $$PWD/widgets/widget/lyricsview.h \
            $$PWD/widgets/window/framelesswidget.h \
            $$PWD/widgets/window/framelesshandler.h \
            $$PWD/widgets/window/framelessshadow.h \
@@ -57,6 +61,7 @@ HEADERS += $$PWD/core/base/singleton.h \
            $$PWD/widgets/window/titlebar.h
 
 SOURCES += $$PWD/core/base/logger.cpp \
+           $$PWD/core/base/lrcparser.cpp \
            $$PWD/core/application/httpfetch.cpp \
            $$PWD/core/application/singleinstance.cpp \
            $$PWD/widgets/button/pushbutton.cpp \
@@ -68,6 +73,7 @@ SOURCES += $$PWD/core/base/logger.cpp \
            $$PWD/widgets/label/toastlabel.cpp \
            $$PWD/widgets/label/transitionlabel.cpp \
            $$PWD/widgets/label/rotatelabel.cpp \
+           $$PWD/widgets/list/playlisttable.cpp \
            $$PWD/widgets/progress/waitspinner.cpp \
            $$PWD/widgets/slider/clickedslider.cpp \
            $$PWD/widgets/slider/tipslider.cpp \
@@ -75,6 +81,7 @@ SOURCES += $$PWD/core/base/logger.cpp \
            $$PWD/widgets/widget/animationstackedwidget.cpp \
            $$PWD/widgets/widget/sidenav.cpp \
            $$PWD/widgets/widget/coverflow.cpp \
+           $$PWD/widgets/widget/lyricsview.cpp \
            $$PWD/widgets/window/framelesswidget.cpp \
            $$PWD/widgets/window/framelesshandler.cpp \
            $$PWD/widgets/window/framelessshadow.cpp \

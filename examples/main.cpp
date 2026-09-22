@@ -28,6 +28,8 @@
 #include "pages/splashscreenpage.h"
 #include "pages/sidenavpage.h"
 #include "pages/coverflowpage.h"
+#include "pages/playlisttablepage.h"
+#include "pages/lyricsviewpage.h"
 
 int main(int argc, char *argv[])
 {
@@ -39,7 +41,8 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
 
-    // 应用主题:基础件整体换肤;此后 setMode 即时切换亮暗
+    // 读回上次的亮暗/强调色(此后变更自动落盘),再应用到全局
+    Theme::instance()->load();
     Theme::instance()->apply();
 
     // 单实例演示:第二个实例把消息转发给第一个后直接退出
@@ -72,6 +75,8 @@ int main(int argc, char *argv[])
     window.addPage(QStringLiteral("页面切换动画"), new AnimationStackedPage);
     window.addPage(QStringLiteral("侧边导航"), new SideNavPage);
     window.addPage(QStringLiteral("封面流"), new CoverFlowPage);
+    window.addPage(QStringLiteral("播放列表"), new PlaylistTablePage);
+    window.addPage(QStringLiteral("歌词"), new LyricsViewPage);
     window.addPage(QStringLiteral("Toast 提示"), new ToastPage);
     QObject::connect(&guard, &SingleInstance::messageReceived, &window, [&window](const QString &message) {
         Log::info() << "收到副实例消息:" << message;

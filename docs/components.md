@@ -46,6 +46,16 @@ Duration::format(65000)     // "01:05";超 1 小时为 "h:mm:ss"
 Duration::parse("1:01")     // 61000;非法输入返回 -1
 ```
 
+### `lrcparser` — LRC 歌词解析
+
+纯文本解析为按时间升序的行序列(供 LyricsView / 业务侧使用):时间标签支持 `[mm:ss]` / `[mm:ss.z..zzz]`(小数点或逗号),一行多标签拆成多行;`[ti:]`/`[ar:]`/`[al:]` 取元数据,`[offset:±ms]` 全局平移(正值提前);无时间标签的行丢弃,空文本行保留。
+
+```cpp
+const LrcParser::Result result = LrcParser::parse(lrcText);
+qDebug() << result.title << result.artist << result.lines.size();
+lyricsView->setLines(result.lines);   // 直接喂给 LyricsView
+```
+
 ## core/application
 
 ### `SingleInstance` — 单实例守护
@@ -91,6 +101,14 @@ if(result.ok()) { use(result.body); }        // result.httpStatus / result.error
 ## widgets/theme
 
 见 [theming.md](theming.md)。`Tokens` 为设计变量常量,`Theme::instance()` 为解析引擎(`color(Role)` / `apply()` / `setMode()`)。
+
+状态持久化:启动时一句 `Theme::instance()->load()`,亮暗 / 强调色 / 跟随系统即跨启动记忆(load 之后任何变更自动落盘到 QSettings 组 `Theme`;消费端设置过组织名就存进它的 QSettings,未设置则退到库自己的固定键 `canfan/common`,不会静默丢数据。不调 load 则不读不写):
+
+```cpp
+QApplication app(argc, argv);
+Theme::instance()->load();    // 读回上次的模式/强调色,并开启变更即存
+Theme::instance()->apply();
+```
 
 ## widgets/button
 
@@ -171,6 +189,21 @@ cover->setPixmap(nextCover);   // 一行完成切换动效
 
 唱片效果:默认静止,`setRunning(true)` 开始转,`setLoopDuration(ms)` 调一圈时长,`setCircular(true)` 圆形裁剪。
 
+## widgets/list
+
+### `PlaylistTable` — 播放列表
+
+自绘行列表:序号 / 封面缩略 / 标题+艺术家 / 时长(`Duration::format`),视口虚拟化绘制——只画可见行,行数无上限。单击或键盘(上下/PgUp/PgDn/Home/End)选中(`currentChanged`),双击/回车激活(`activated`,业务侧开播);`setPlayingIndex()` 标记正在播放行(主色淡底 + 左侧指示条 + 序号位换播放字形),与选中态独立。封面缩略按行高懒缩放缓存,列表存在任一封面才启用缩略图列。
+
+```cpp
+PlaylistTable *table = new PlaylistTable;
+table->setTracks(tracks);                      // QVector<PlaylistTable::Track>
+connect(table, &PlaylistTable::activated, this, [this, table](int index) {
+    player->play(table->track(index));         // 双击/回车开播
+    table->setPlayingIndex(index);             // 标记正在播放行
+});
+```
+
 ## widgets/slider
 
 ### `ClickedSlider`
@@ -218,6 +251,16 @@ connect(nav, &SideNav::currentChanged, stack, &QStackedWidget::setCurrentIndex);
 ```cpp
 flow->setCovers(covers);
 connect(flow, &CoverFlow::currentChanged, this, &Browser::onCoverChanged);
+```
+
+### `LyricsView` — 歌词视图
+
+逐行歌词:当前行加粗放大、主文本色,其余淡色;行切换平滑滚动到视口中部,滚轮自由浏览(下一次行切换重新居中)。数据来自 `LrcParser::parse()`(core/base),`setTime(ms)` 由播放进度驱动,点击行发 `lineClicked(ms)` 供业务 seek。
+
+```cpp
+view->setLines(LrcParser::parse(lrcText).lines);
+connect(player, &Player::timeChanged, view, &LyricsView::setTime);
+connect(view, &LyricsView::lineClicked, player, &Player::seek);
 ```
 
 ## widgets/window

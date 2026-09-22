@@ -26,6 +26,10 @@ add_executable(widgets_demo WIN32
     pages/sidenavpage.cpp
     pages/coverflowpage.h
     pages/coverflowpage.cpp
+    pages/playlisttablepage.h
+    pages/playlisttablepage.cpp
+    pages/lyricsviewpage.h
+    pages/lyricsviewpage.cpp
     pages/toastpage.h
     pages/toastpage.cpp
     pages/themepage.h

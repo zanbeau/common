@@ -4,6 +4,8 @@ add_library(core STATIC
     application/singleinstance.h
     application/singleinstance.cpp
     base/duration.h
+    base/lrcparser.h
+    base/lrcparser.cpp
     base/logger.h
     base/logger.cpp
     base/singleton.h

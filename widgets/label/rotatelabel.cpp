@@ -23,6 +23,8 @@ RotateLabel::RotateLabel(QWidget *parent)
 void RotateLabel::setPixmap(const QPixmap &pixmap)
 {
     m_pixmap = pixmap;
+    m_scaled = QPixmap();
+    m_scaledExtent = -1;
     update();
 }
 
@@ -109,13 +111,21 @@ void RotateLabel::paintEvent(QPaintEvent *event)
         painter.setClipPath(clip);
     }
 
-    // 圆形模式下缩放到内接正方形,普通模式等比缩放
-    const int extent = m_circular ? qMin(width(), height())
-                                  : qMin(width(), height());
-    const QPixmap scaled = m_pixmap.scaled(extent, extent, Qt::KeepAspectRatio,
-                                           Qt::SmoothTransformation);
+    // 缩放到短边正方形(圆形模式即内接正方形):结果只随原图/尺寸变化,
+    // 缓存后旋转帧内只是平移旋转绘制,不再每帧 SmoothTransformation
+    const int extent = qMin(width(), height());
+    if(extent <= 0)
+    {
+        return;
+    }
+    if(m_scaledExtent != extent || m_scaled.isNull())
+    {
+        m_scaled = m_pixmap.scaled(extent, extent, Qt::KeepAspectRatio,
+                                   Qt::SmoothTransformation);
+        m_scaledExtent = extent;
+    }
 
     painter.translate(width() / 2.0, height() / 2.0);
     painter.rotate(angle());
-    painter.drawPixmap(-scaled.width() / 2.0, -scaled.height() / 2.0, scaled);
+    painter.drawPixmap(-m_scaled.width() / 2.0, -m_scaled.height() / 2.0, m_scaled);
 }

@@ -44,6 +44,7 @@ void CoverFlow::addCover(const QPixmap &cover)
 void CoverFlow::setCovers(const QVector<QPixmap> &covers)
 {
     m_covers = covers;
+    m_cache.clear();  // 同数量也可能是不同图,缓存整体失效
     m_current = covers.isEmpty() ? -1 : 0;
     m_anim.stop();
     setVisualPosition(m_current);
@@ -95,11 +96,37 @@ void CoverFlow::setVisualPosition(qreal position)
     update();
 }
 
+void CoverFlow::ensureCache(const QSize &base)
+{
+    // 基准尺寸(中间封面大小)变了整体重建;封面增删只补缺失项
+    if(m_cacheBase != base)
+    {
+        m_cache.clear();
+        m_cacheBase = base;
+    }
+    if(m_cache.size() == m_covers.size())
+    {
+        return;
+    }
+    m_cache.resize(m_covers.size());
+    for(int i = 0; i < m_covers.size(); ++i)
+    {
+        if(m_cache.at(i).isNull() && !m_covers.at(i).isNull())
+        {
+            m_cache[i] = m_covers.at(i).scaled(base.width(), base.height(),
+                                               Qt::KeepAspectRatio,
+                                               Qt::SmoothTransformation);
+        }
+    }
+}
+
 void CoverFlow::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
+    // 封面从缓存基准尺寸缩放绘制,开平滑插值保证两侧缩小仍有质感
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
     painter.fillRect(rect(), Theme::instance()->color(Theme::Role::Background));
     if(m_covers.isEmpty())
     {
@@ -116,6 +143,9 @@ void CoverFlow::paintEvent(QPaintEvent *event)
     const qreal spacing = coverWidth * kSpacingRatio;
     const QPointF center(width() / 2.0, height() / (1.0 + kReflectRatio) / 2.0 + 8);
 
+    // 平滑缩放每张封面只在基准尺寸变化时做一次,绘制帧内只做缩放绘制
+    ensureCache(QSize(qRound(coverWidth), qRound(coverHeight)));
+
     // 远 -> 近绘制,中间的封面最后画、盖在最上面
     QVector<int> order;
     for(int i = first; i <= last; ++i)
@@ -128,33 +158,37 @@ void CoverFlow::paintEvent(QPaintEvent *event)
 
     for(int i : order)
     {
+        const QPixmap &base = m_cache.at(i);
+        if(base.isNull())
+        {
+            continue;
+        }
+
         const qreal dist = i - m_visualPos; // 负在左,正在右
 
         // 尺度:|dist|<=1 为原大小,到 |dist|=3 收缩到 kSideScale
         const qreal t = qBound(0.0, (qAbs(dist) - 1.0) / 2.0, 1.0);
         const qreal scale = 1.0 - t * (1.0 - kSideScale);
-        const qreal w = coverWidth * scale;
-        const qreal h = coverHeight * scale;
+        const qreal w = base.width() * scale;
+        const qreal h = base.height() * scale;
         const qreal x = center.x() + dist * spacing - w / 2.0;
         const qreal y = center.y() - h / 2.0;
 
         // 远处封面渐隐
         const qreal opacity = 1.0 - qBound(0.0, qAbs(dist) - 0.6, 2.4) * 0.30;
-        const QPixmap scaled = m_covers.at(i).scaled(qRound(w), qRound(h),
-                                                     Qt::KeepAspectRatio,
-                                                     Qt::SmoothTransformation);
+        const QRectF coverRect(x, y, w, h);
 
-        // 倒影:镜像淡显,再用背景色纵向渐变盖出向下淡出的效果
+        // 倒影:painter 纵向翻转 + 压缩直接画(免去逐帧镜像拷贝),
+        // 再用背景色纵向渐变盖出向下淡出的效果
         const QColor bg = Theme::instance()->color(Theme::Role::Background);
-        const QRectF coverRect(x, y, scaled.width(), scaled.height());
-        QPixmap mirror = scaled.transformed(QTransform().scale(1, -1));
-        const QRectF mirrorRect(x, coverRect.bottom() + 4.0,
-                                scaled.width(), scaled.height() * kReflectRatio);
+        const QRectF mirrorRect(x, coverRect.bottom() + 4.0, w, h * kReflectRatio);
+        painter.save();
         painter.setOpacity(kReflectOpacity * opacity);
-        painter.drawPixmap(mirrorRect.topLeft(),
-                           mirror.scaled(mirrorRect.size().toSize(),
-                                         Qt::IgnoreAspectRatio,
-                                         Qt::SmoothTransformation));
+        painter.translate(0.0, mirrorRect.top() + mirrorRect.bottom());
+        painter.scale(1.0, -1.0);
+        painter.drawPixmap(mirrorRect, base,
+                           QRectF(0, 0, base.width(), base.height()));
+        painter.restore();
 
         QLinearGradient fade(mirrorRect.topLeft(), mirrorRect.bottomLeft());
         fade.setColorAt(0.0, QColor(bg.red(), bg.green(), bg.blue(), 0));
@@ -163,7 +197,8 @@ void CoverFlow::paintEvent(QPaintEvent *event)
         painter.fillRect(mirrorRect, fade);
 
         painter.setOpacity(opacity);
-        painter.drawPixmap(coverRect.topLeft(), scaled);
+        painter.drawPixmap(coverRect, base,
+                           QRectF(0, 0, base.width(), base.height()));
         painter.setPen(QPen(Theme::instance()->color(Theme::Role::Border), 1));
         painter.drawRect(coverRect.adjusted(0, 0, -1, -1));
         painter.setOpacity(1.0);

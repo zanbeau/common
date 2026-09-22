@@ -6,6 +6,8 @@
 #include <QMouseEvent>
 #include <QPixmap>
 #include <QPointer>
+#include <QScrollBar>
+#include <QSettings>
 #include <QVBoxLayout>
 
 #include "animationstackedwidget.h"
@@ -17,9 +19,12 @@
 #include "framelesshandler.h"
 #include "framelesswidget.h"
 #include "iconbutton.h"
+#include "lrcparser.h"
+#include "lyricsview.h"
 #include "marqueelabel.h"
 #include "messagebox.h"
 #include "notifywindow.h"
+#include "playlisttable.h"
 #include "pushbutton.h"
 #include "rotatelabel.h"
 #include "searchinput.h"
@@ -65,6 +70,9 @@ private slots:
     void messageBox();
     void sideNav();
     void coverFlow();
+    void themePersistence();
+    void playlistTable();
+    void lyricsView();
 };
 
 void TstWidgets::clickedLabel()
@@ -1062,6 +1070,174 @@ void TstWidgets::coverFlow()
     flow.setCurrentIndex(2);
     QCOMPARE(spy.count(), 2);
     QVERIFY(!flow.grab().isNull());
+}
+
+void TstWidgets::themePersistence()
+{
+    // 测试进程固定组织名:库与测试的 QSettings 才落在同一位置
+    // (组织名为空时库会退到 canfan/common,测试读不到默认构造的位置)
+    QCoreApplication::setOrganizationName(QStringLiteral("canfan-tst"));
+
+    Theme *theme = Theme::instance();
+    {
+        QSettings settings;
+        settings.remove(QStringLiteral("Theme"));   // 从干净状态开始
+    }
+
+    // 未调 load():零读写,行为与从前一致
+    theme->setMode(Theme::Mode::Dark);
+    theme->setMode(Theme::Mode::Light);
+    {
+        QSettings settings;
+        QVERIFY(!settings.contains(QStringLiteral("Theme/mode")));
+    }
+
+    // load() 开启记忆:首启没有存量状态返回 false,但此后变更即落盘
+    QVERIFY(!theme->load());
+    theme->setMode(Theme::Mode::Dark);
+    theme->setAccent(QColor(0xFF, 0x00, 0x00));
+    {
+        QSettings settings;
+        QCOMPARE(settings.value(QStringLiteral("Theme/mode")).toInt(), 1);
+        QCOMPARE(settings.value(QStringLiteral("Theme/accent")).toString(),
+                 QStringLiteral("#ff0000"));
+    }
+
+    // 模拟另一次启动:先把内存重置(写透会把重置一并落盘),再直接把存量
+    // 状态写回磁盘绕过库,load() 的读回路径与真实的新进程完全一致
+    theme->setMode(Theme::Mode::Light);
+    theme->setAccent(QColor());
+    QCOMPARE(theme->mode(), Theme::Mode::Light);
+    QVERIFY(!theme->accent().isValid());
+    {
+        QSettings settings;
+        settings.setValue(QStringLiteral("Theme/mode"), 1);
+        settings.setValue(QStringLiteral("Theme/accent"), QStringLiteral("#ff0000"));
+    }
+
+    QVERIFY(theme->load());
+    QCOMPARE(theme->mode(), Theme::Mode::Dark);
+    QCOMPARE(theme->accent(), QColor(0xFF, 0x00, 0x00));
+
+    // 清场,不污染下一次测试运行
+    theme->setMode(Theme::Mode::Light);
+    theme->setAccent(QColor());
+    {
+        QSettings settings;
+        settings.remove(QStringLiteral("Theme"));
+    }
+}
+
+void TstWidgets::playlistTable()
+{
+    PlaylistTable table;
+    QVector<PlaylistTable::Track> tracks;
+    for(int i = 0; i < 100; ++i)
+    {
+        PlaylistTable::Track track;
+        track.title = QStringLiteral("标题%1").arg(i);
+        track.artist = QStringLiteral("歌手%1").arg(i);
+        track.duration = 60'000 + i * 1'000;
+        tracks.append(track);
+    }
+    table.setTracks(tracks);
+
+    QCOMPARE(table.count(), 100);
+    QCOMPARE(table.track(0).title, QStringLiteral("标题0"));
+    QVERIFY(table.track(100).title.isEmpty());   // 越界返回空 Track
+    QCOMPARE(table.currentIndex(), -1);
+    QCOMPARE(table.playingIndex(), -1);
+
+    // 播放行与选中相互独立
+    QSignalSpy currentSpy(&table, &PlaylistTable::currentChanged);
+    QSignalSpy activatedSpy(&table, &PlaylistTable::activated);
+    table.setPlayingIndex(7);
+    QCOMPARE(table.playingIndex(), 7);
+    QCOMPARE(table.currentIndex(), -1);
+    QCOMPARE(currentSpy.count(), 0);
+
+    // 程序设选中 / 越界清除
+    table.setCurrentIndex(5);
+    QCOMPARE(table.currentIndex(), 5);
+    QCOMPARE(currentSpy.count(), 1);
+    table.setCurrentIndex(999);
+    QCOMPARE(table.currentIndex(), -1);
+    QCOMPARE(currentSpy.count(), 2);
+
+    // 键盘导航 + 激活;大列表跳到底部会滚动
+    table.resize(300, 200);
+    table.setCurrentIndex(0);
+    QTest::keyClick(&table, Qt::Key_Down);
+    QCOMPARE(table.currentIndex(), 1);
+    QTest::keyClick(&table, Qt::Key_End);
+    QCOMPARE(table.currentIndex(), 99);
+    QVERIFY(table.verticalScrollBar()->value() > 0);
+    QTest::keyClick(&table, Qt::Key_Return);
+    QCOMPARE(activatedSpy.count(), 1);
+
+    // 双击行:选中 + 激活
+    table.setCurrentIndex(0);
+    table.verticalScrollBar()->setValue(0);
+    QTest::mouseDClick(table.viewport(), Qt::LeftButton, Qt::NoModifier, QPoint(150, 22));
+    QCOMPARE(table.currentIndex(), 0);
+    QCOMPARE(activatedSpy.count(), 2);
+
+    // 换数据复位 + 空表绘制冒烟
+    table.setTracks({});
+    QCOMPARE(table.count(), 0);
+    QCOMPARE(table.currentIndex(), -1);
+    QCOMPARE(table.playingIndex(), -1);
+    QVERIFY(!table.grab().isNull());
+}
+
+void TstWidgets::lyricsView()
+{
+    const LrcParser::Result parsed = LrcParser::parse(QStringLiteral(
+        "[00:01.00]第一行\n"
+        "[00:05.00]第二行\n"
+        "[00:09.00]第三行"));
+
+    LyricsView view;
+    view.setLines(parsed.lines);
+    QCOMPARE(view.lineCount(), 3);
+    QCOMPARE(view.currentLine(), -1);
+    QCOMPARE(view.lineTime(1), qint64(5'000));
+    QCOMPARE(view.lineTime(9), qint64(-1));
+
+    // 进度驱动:未到第一行不高亮,之后逐行推进、可回跳
+    view.setTime(0);
+    QCOMPARE(view.currentLine(), -1);
+    view.setTime(1'000);
+    QCOMPARE(view.currentLine(), 0);
+    view.setTime(4'999);
+    QCOMPARE(view.currentLine(), 0);
+    view.setTime(6'000);
+    QCOMPARE(view.currentLine(), 1);
+    view.setTime(999'999);
+    QCOMPARE(view.currentLine(), 2);
+    view.setTime(2'000);
+    QCOMPARE(view.currentLine(), 0);
+
+    // 点击行发 lineClicked(ms);等居中动画结束再点第一行
+    view.resize(300, 260);
+    view.show();
+    QTRY_VERIFY(view.isVisible());
+    QTest::qWait(350);
+    QSignalSpy spy(&view, &LyricsView::lineClicked);
+    QTest::mouseClick(&view, Qt::LeftButton, Qt::NoModifier, QPoint(150, 22));
+    QCOMPARE(spy.count(), 1);
+    QCOMPARE(spy.at(0).at(0).toLongLong(), qint64(1'000));
+
+    // 滚轮自由浏览,不改变当前行
+    QWheelEvent wheel(QPointF(150, 100), QPointF(150, 100), QPoint(0, 120),
+                      QPoint(0, 120), Qt::NoButton, Qt::NoModifier,
+                      Qt::NoScrollPhase, false);
+    QApplication::sendEvent(&view, &wheel);
+    QCOMPARE(view.currentLine(), 0);
+
+    QVERIFY(!view.grab().isNull());
+    view.clear();
+    QCOMPARE(view.lineCount(), 0);
 }
 
 // 等价 QTEST_MAIN,但需在 QApplication 构造前为 Qt5 开启 High-DPI

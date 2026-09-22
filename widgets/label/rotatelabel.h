@@ -35,4 +35,6 @@ private:
     QPixmap m_pixmap;
     QVariantAnimation m_angle;
     bool m_circular = false;
+    QPixmap m_scaled;         // 平滑缩放缓存:只随原图/尺寸变化重算,旋转帧内复用
+    int m_scaledExtent = -1;
 };

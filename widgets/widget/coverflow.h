@@ -38,6 +38,7 @@ protected:
 private:
     void animateTo(int index);
     void setVisualPosition(qreal position);
+    void ensureCache(const QSize &base);  // 基准尺寸不符时把封面平滑缩放缓存一遍
 
     QVector<QPixmap> m_covers;
     int m_current = -1;
@@ -46,4 +47,6 @@ private:
     qreal m_dragStartPos = 0;
     bool m_dragging = false;
     QVariantAnimation m_anim;
+    QVector<QPixmap> m_cache;   // 每张封面按基准尺寸(中间封面大小)缩放一次的缓存
+    QSize m_cacheBase;
 };

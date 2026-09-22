@@ -1,9 +1,12 @@
 #include "theme.h"
 
 #include <QApplication>
+#include <QCoreApplication>
 #include <QGuiApplication>
 #include <QPalette>
 #include <QSettings>
+
+#include <memory>
 
 #ifdef Q_OS_WIN
 #define NOMINMAX
@@ -69,6 +72,19 @@ QColor resolve(const Tokens::Palette &pal, Theme::Role role)
     return pal.text;
 }
 
+// 持久化用的 QSettings:消费端设置过组织名就走它的默认位置;组织名为空时
+// QSettings 在 Windows 上没有落盘位置(fileName 为空、读写全静默丢弃),
+// 退到库自己的固定键 canfan/common,保证 load()/save() 不悄悄失效
+std::unique_ptr<QSettings> makeSettings()
+{
+    if(QCoreApplication::organizationName().isEmpty())
+    {
+        return std::make_unique<QSettings>(QStringLiteral("canfan"),
+                                           QStringLiteral("common"));
+    }
+    return std::make_unique<QSettings>();
+}
+
 } // namespace
 
 Theme *Theme::instance()
@@ -105,6 +121,7 @@ void Theme::updateMode(Mode mode)
     {
         apply();
     }
+    persist();
     emit modeChanged(mode);
     emit themeChanged();
 }
@@ -125,6 +142,7 @@ void Theme::setAccent(const QColor &color)
     {
         apply();
     }
+    persist();
     emit themeChanged();
 }
 
@@ -147,9 +165,10 @@ void Theme::setFollowSystem(bool follow)
         qApp->installNativeEventFilter(g_systemThemeFilter);
     }
 #endif
+    persist();
     if(follow)
     {
-        syncWithSystem();
+        syncWithSystem();   // 系统亮暗若与当前不同,内部 updateMode 会再 persist
     }
 }
 
@@ -431,4 +450,69 @@ void Theme::apply()
     qApp->setPalette(pal);
 
     qApp->setStyleSheet(styleSheet());
+}
+
+bool Theme::load()
+{
+    // 读回期间先关持久化:setAccent/setMode 各自会触发 persist(),若不关,
+    // 半途的 save() 会把内存旧值写回磁盘,盖掉尚未读到的键(先读 accent 时
+    // 就会把存盘的 mode 冲成内存的 mode)。读完再开启:此后任何变化自动落盘,
+    // 消费端启动时调一句 load() 即可;没存过状态也照样开启(首启开始记录)
+    m_persist = false;
+
+    auto settings = makeSettings();
+    settings->beginGroup(QStringLiteral("Theme"));
+    const bool hasMode = settings->contains(QStringLiteral("mode"));
+    const bool hasAccent = settings->contains(QStringLiteral("accent"));
+    const bool hasFollow = settings->contains(QStringLiteral("followSystem"));
+
+    if(hasAccent)
+    {
+        const QColor accent(settings->value(QStringLiteral("accent")).toString());
+        if(accent.isValid())
+        {
+            setAccent(accent);
+        }
+    }
+    if(hasMode)
+    {
+        // 存的是 0/1,脏数据一律按亮色处理
+        setMode(settings->value(QStringLiteral("mode")).toInt() == 1
+                    ? Mode::Dark
+                    : Mode::Light);
+    }
+    if(hasFollow && settings->value(QStringLiteral("followSystem")).toBool())
+    {
+        setFollowSystem(true);   // 最后恢复:跟随时以系统亮暗为准,覆盖存的 mode
+    }
+    settings->endGroup();
+
+    // 读回完成才开启记忆:此后任何 mode/accent/followSystem 变化自动落盘
+    m_persist = true;
+    return hasMode || hasAccent || hasFollow;
+}
+
+void Theme::save()
+{
+    auto settings = makeSettings();
+    settings->beginGroup(QStringLiteral("Theme"));
+    settings->setValue(QStringLiteral("mode"), static_cast<int>(m_mode));
+    if(m_accent.isValid())
+    {
+        settings->setValue(QStringLiteral("accent"), m_accent.name());
+    }
+    else
+    {
+        settings->remove(QStringLiteral("accent"));   // 无覆盖 = 不留旧键
+    }
+    settings->setValue(QStringLiteral("followSystem"), m_followSystem);
+    settings->endGroup();
+}
+
+void Theme::persist()
+{
+    if(m_persist)
+    {
+        save();
+    }
 }

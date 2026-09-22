@@ -18,6 +18,8 @@ HEADERS += gallerywindow.h \
            pages/animationstackedpage.h \
            pages/sidenavpage.h \
            pages/coverflowpage.h \
+           pages/playlisttablepage.h \
+           pages/lyricsviewpage.h \
            pages/toastpage.h \
            pages/themepage.h \
            pages/pushbuttonpage.h \
@@ -44,6 +46,8 @@ SOURCES += main.cpp \
            pages/animationstackedpage.cpp \
            pages/sidenavpage.cpp \
            pages/coverflowpage.cpp \
+           pages/playlisttablepage.cpp \
+           pages/lyricsviewpage.cpp \
            pages/toastpage.cpp \
            pages/themepage.cpp \
            pages/pushbuttonpage.cpp \

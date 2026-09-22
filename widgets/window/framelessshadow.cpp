@@ -13,6 +13,43 @@ namespace {
 constexpr int kShadowMargin = 12;
 constexpr int kShadowAlpha = 90;
 
+// —— 九宫格贴片渲染:按 DPR 出图,绘制时角块 1:1 贴、边条沿边缘拉伸 ——
+
+// 边条:渐变垂直于边缘线性衰减(沿边缘方向无变化,1px 宽即可拉伸)。
+// vertical = 左右边缘条(渐变沿 x);shadowAtStart = 渐变起点(x/y=0 端)是深色
+QPixmap makeStrip(bool vertical, bool shadowAtStart, qreal dpr)
+{
+    const int m = kShadowMargin;
+    QPixmap pm(vertical ? QSize(qRound(m * dpr), qMax(qRound(dpr), 1))
+                        : QSize(qMax(qRound(dpr), 1), qRound(m * dpr)));
+    // 新构造的 QPixmap 内存未初始化,须先清成透明——默认 SourceOver 合成会把
+    // 渐变画在垃圾像素上(alpha=0 处垃圾原样保留,半透明处混入随机内容)
+    pm.fill(Qt::transparent);
+    pm.setDevicePixelRatio(dpr);
+    QPainter p(&pm);
+    QLinearGradient g(QPointF(0, 0), vertical ? QPointF(m, 0) : QPointF(0, m));
+    g.setColorAt(0.0, QColor(0, 0, 0, shadowAtStart ? kShadowAlpha : 0));
+    g.setColorAt(1.0, QColor(0, 0, 0, shadowAtStart ? 0 : kShadowAlpha));
+    p.fillRect(QRectF(0, 0, m, m), g);
+    return pm;
+}
+
+// 角块:径向渐变,圆心 = 卡片角(贴片局部坐标),半径 m——按距离线性衰减,
+// 与边条在交界处数值连续、无拼缝
+QPixmap makeCorner(const QPointF &cardCorner, qreal dpr)
+{
+    const int m = kShadowMargin;
+    QPixmap pm(QSize(qRound(m * dpr), qRound(m * dpr)));
+    pm.fill(Qt::transparent);   // 同 makeStrip:先清底再画,防未初始化内存混入
+    pm.setDevicePixelRatio(dpr);
+    QPainter p(&pm);
+    QRadialGradient g(cardCorner, m, cardCorner);
+    g.setColorAt(0.0, QColor(0, 0, 0, kShadowAlpha));
+    g.setColorAt(1.0, QColor(0, 0, 0, 0));
+    p.fillRect(QRectF(0, 0, m, m), g);
+    return pm;
+}
+
 } // namespace
 
 FramelessShadow::FramelessShadow(QWidget *host)
@@ -61,6 +98,27 @@ int FramelessShadow::shadowMargin() const
     return kShadowMargin;
 }
 
+void FramelessShadow::ensurePatches()
+{
+    const qreal dpr = m_host->devicePixelRatioF();
+    if(m_patchDpr == dpr)
+    {
+        return;
+    }
+    m_patchDpr = dpr;
+
+    // 上/下边条:渐变沿 y,深色端贴卡片;左/右边条:渐变沿 x
+    m_stripTop = makeStrip(false, false, dpr);
+    m_stripBottom = makeStrip(false, true, dpr);
+    m_stripLeft = makeStrip(true, false, dpr);
+    m_stripRight = makeStrip(true, true, dpr);
+    // 角块圆心 = 对应卡片角在贴片内的位置(贴片铺在角上时)
+    m_cornerTL = makeCorner(QPointF(kShadowMargin, kShadowMargin), dpr);
+    m_cornerTR = makeCorner(QPointF(0, kShadowMargin), dpr);
+    m_cornerBL = makeCorner(QPointF(kShadowMargin, 0), dpr);
+    m_cornerBR = makeCorner(QPointF(0, 0), dpr);
+}
+
 void FramelessShadow::paint(QPainter *painter)
 {
     // 最大化/全屏:方角满铺,无阴影无圆角(边对边才不露黑边)
@@ -74,39 +132,21 @@ void FramelessShadow::paint(QPainter *painter)
     const QRect card = m_content->geometry();
     if(m_shadowEnabled)
     {
-        const QColor shadow(0, 0, 0, kShadowAlpha);
-        const QColor transparent(0, 0, 0, 0);
+        ensurePatches();
         const int m = kShadowMargin;
-        // 四边:线性渐变。四角:径向渐变(圆心 = 卡片角)。
-        // 径向/线性衰减同为按距离线性,交界处数值连续,无拼缝
-        QLinearGradient top(card.left(), card.top() - m, card.left(), card.top());
-        top.setColorAt(0.0, transparent);
-        top.setColorAt(1.0, shadow);
-        painter->fillRect(card.left(), card.top() - m, card.width(), m, top);
-
-        QLinearGradient bottom(card.left(), card.bottom() + m, card.left(), card.bottom());
-        bottom.setColorAt(0.0, transparent);
-        bottom.setColorAt(1.0, shadow);
-        painter->fillRect(card.left(), card.bottom() + 1, card.width(), m, bottom);
-
-        QLinearGradient left(card.left() - m, card.top(), card.left(), card.top());
-        left.setColorAt(0.0, transparent);
-        left.setColorAt(1.0, shadow);
-        painter->fillRect(card.left() - m, card.top(), m, card.height(), left);
-
-        QLinearGradient right(card.right() + m, card.top(), card.right(), card.top());
-        right.setColorAt(0.0, transparent);
-        right.setColorAt(1.0, shadow);
-        painter->fillRect(card.right() + 1, card.top(), m, card.height(), right);
-
-        painter->fillRect(card.left() - m, card.top() - m, m, m,
-                          QRadialGradient(card.topLeft(), m, card.topLeft()));
-        painter->fillRect(card.right() + 1 - m, card.top() - m, m, m,
-                          QRadialGradient(card.topRight(), m, card.topRight()));
-        painter->fillRect(card.left() - m, card.bottom() + 1 - m, m, m,
-                          QRadialGradient(card.bottomLeft(), m, card.bottomLeft()));
-        painter->fillRect(card.right() + 1 - m, card.bottom() + 1 - m, m, m,
-                          QRadialGradient(card.bottomRight(), m, card.bottomRight()));
+        // 四边条沿边缘拉伸平铺,四角块 1:1 贴图——每帧只贴图不再栅格化渐变
+        painter->drawPixmap(QRect(card.left(), card.top() - m, card.width(), m),
+                            m_stripTop);
+        painter->drawPixmap(QRect(card.left(), card.bottom() + 1, card.width(), m),
+                            m_stripBottom);
+        painter->drawPixmap(QRect(card.left() - m, card.top(), m, card.height()),
+                            m_stripLeft);
+        painter->drawPixmap(QRect(card.right() + 1, card.top(), m, card.height()),
+                            m_stripRight);
+        painter->drawPixmap(QRect(card.left() - m, card.top() - m, m, m), m_cornerTL);
+        painter->drawPixmap(QRect(card.right() + 1, card.top() - m, m, m), m_cornerTR);
+        painter->drawPixmap(QRect(card.left() - m, card.bottom() + 1, m, m), m_cornerBL);
+        painter->drawPixmap(QRect(card.right() + 1, card.bottom() + 1, m, m), m_cornerBR);
     }
 
     // 圆角卡片即内容底色:子控件不再各自铺满底色(那会把圆角盖成方角)

@@ -11,6 +11,7 @@
 #include "duration.h"
 #include "httpfetch.h"
 #include "logger.h"
+#include "lrcparser.h"
 #include "singleinstance.h"
 #include "singleton.h"
 
@@ -111,6 +112,7 @@ class TstCore : public QObject
 private slots:
     void singleton();
     void duration();
+    void lrcParser();
     void logger();
     void loggerLevel();
     void httpFetchSync();
@@ -155,6 +157,52 @@ void TstCore::duration()
     // 往返一致
     QCOMPARE(Duration::parse(Duration::format(3'661'000)), qint64(3'661'000));
     QCOMPARE(Duration::parse(Duration::format(65'000)), qint64(65'000));
+}
+
+void TstCore::lrcParser()
+{
+    // 基本标签:两位/一位分钟、两三位小数、逗号小数
+    const QString lrc = QStringLiteral(
+        "[ti:晚风信笺]\n"
+        "[ar:演示歌手]\n"
+        "[al:控件库示例]\n"
+        "[by:别人]\n"
+        "[00:12.00]第一行\n"
+        "[1:02,5]第二行\n"
+        "[01:03.125][00:50]第三行双标签\n"
+        "[00:20]\n"
+        "没有标签的杂行\n"
+        "[offset:+1000]\n");
+    const LrcParser::Result result = LrcParser::parse(lrc);
+
+    QCOMPARE(result.title, QStringLiteral("晚风信笺"));
+    QCOMPARE(result.artist, QStringLiteral("演示歌手"));
+    QCOMPARE(result.album, QStringLiteral("控件库示例"));
+
+    // offset 全局生效:+1000 整体提前 1s;多标签拆行;乱序输入按时间排序
+    QCOMPARE(result.lines.size(), 5);
+    QCOMPARE(result.lines.at(0).ms, qint64(11'000));
+    QCOMPARE(result.lines.at(0).text, QStringLiteral("第一行"));
+    QCOMPARE(result.lines.at(1).ms, qint64(19'000));
+    QCOMPARE(result.lines.at(1).text, QString());          // 空文本行保留
+    QCOMPARE(result.lines.at(2).ms, qint64(49'000));
+    QCOMPARE(result.lines.at(2).text, QStringLiteral("第三行双标签"));
+    QCOMPARE(result.lines.at(3).ms, qint64(61'500));
+    QCOMPARE(result.lines.at(3).text, QStringLiteral("第二行"));
+    QCOMPARE(result.lines.at(4).ms, qint64(62'125));
+    QCOMPARE(result.lines.at(4).text, QStringLiteral("第三行双标签"));
+
+    // 无 offset:小数位数补齐(.5 = 500ms),秒一位数宽容
+    const LrcParser::Result plain = LrcParser::parse(QStringLiteral("[00:01.5]a\n[00:02]b"));
+    QCOMPARE(plain.lines.size(), 2);
+    QCOMPARE(plain.lines.at(0).ms, qint64(1'500));
+    QCOMPARE(plain.lines.at(1).ms, qint64(2'000));
+
+    // 负 offset 延后;空文本与无文本标签行都可解析
+    const LrcParser::Result delayed = LrcParser::parse(
+        QStringLiteral("[offset:-500]\n[00:01.00]x"));
+    QCOMPARE(delayed.lines.size(), 1);
+    QCOMPARE(delayed.lines.at(0).ms, qint64(1'500));
 }
 
 void TstCore::logger()
